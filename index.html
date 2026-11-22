@@ -17,15 +17,9 @@
 
       <form id="authLoginForm" style="text-align: left;">
         <div class="form-group">
-          <label class="form-label" for="authPasskeyInput">Owner Passkey or Scoped Guest Token</label>
-          <div style="position: relative; display: flex; align-items: center;">
-            <input type="password" id="authPasskeyInput" class="form-control" placeholder="Enter google2026 or ACC-... token" required autocomplete="current-password" style="padding-right: 44px;">
-            <button type="button" id="toggleAuthPasskeyVisibility" style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 14px; padding: 4px;" title="Show / Hide Passkey">👁</button>
-          </div>
+          <label class="form-label" for="authPasskeyInput">Passkey or Authorized Access Token</label>
+          <input type="password" id="authPasskeyInput" class="form-control" placeholder="Enter access passkey or token..." required autocomplete="current-password">
           <div id="authErrorMessage" style="color: var(--google-red); font-size: 12px; margin-top: 6px; display: none;"></div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
-            Owner passkey: <code>google2026</code> &bull; Guest tokens: <code>ACC-CAR-...</code>, <code>ACC-DSA-...</code>, <code>ACC-AI-...</code>, <code>ACC-FULL-...</code>
-          </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
@@ -38,10 +32,6 @@
         <button type="button" id="openRequestAccessBtn" class="btn btn-outline btn-sm" style="margin-left: 6px;">
           Request Access
         </button>
-      </div>
-
-      <div style="margin-top: 16px; font-size: 11px; color: var(--text-muted);">
-        Default Owner Passkey: <code>google2026</code>
       </div>
     </div>
   </div>

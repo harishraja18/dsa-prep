@@ -120,7 +120,7 @@ export class ContestService {
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification(title, {
         body,
-        icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>"
+        icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%231a73e8%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><circle cx=%2212%22 cy=%2212%22 r=%226%22 fill=%22%23ffffff%22/><circle cx=%2212%22 cy=%2212%22 r=%223%22 fill=%22%231a73e8%22/></svg>"
       });
     }
   }

@@ -11,6 +11,7 @@ import { NewsService } from "./newsService.js";
 import { AuthService } from "./auth.js";
 import { ContestService } from "./contestService.js";
 import { DailyPlanner } from "./dailyPlanner.js";
+import { PrepChatbot } from "./chatbot.js";
 
 // Problem solving checklist to-do items
 const GUIDANCE_TODO_ITEMS = [
@@ -96,6 +97,7 @@ class EngineeringWorkspace {
     this.initTimerControls();
     this.initIndustryNews();
     this.initAdminAndSecurity();
+    this.chatbot = new PrepChatbot();
   }
 
   // --- AUTHENTICATION & SCOPES ---
@@ -106,19 +108,6 @@ class EngineeringWorkspace {
     const errorMsg = document.getElementById("authErrorMessage");
     const userLabel = document.getElementById("headerUserLabel");
     const logoutBtn = document.getElementById("headerLogoutBtn");
-    const togglePasskeyBtn = document.getElementById("toggleAuthPasskeyVisibility");
-
-    togglePasskeyBtn?.addEventListener("click", () => {
-      if (passkeyInput) {
-        if (passkeyInput.type === "password") {
-          passkeyInput.type = "text";
-          togglePasskeyBtn.textContent = "🙈";
-        } else {
-          passkeyInput.type = "password";
-          togglePasskeyBtn.textContent = "👁";
-        }
-      }
-    });
 
     const enforcePermissions = () => {
       const user = AuthService.getCurrentUser();
@@ -674,36 +663,37 @@ class EngineeringWorkspace {
     container.innerHTML = filtered.map((job) => `
       <div class="job-card ${job.isGoogle ? "google-job" : ""}">
         <div>
-          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-            <span class="job-company">${job.company} • ${job.team}</span>
-            <span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${job.roleCategory}</span>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+            <span class="job-company">${job.company} &bull; ${job.team}</span>
+            <span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">${job.roleCategory}</span>
           </div>
 
           <h3 class="job-title">${job.title}</h3>
 
-          <div class="job-meta">
-            <span>📍 ${job.location}</span>
-            <span>💼 ${job.experienceLevel}</span>
+          <div class="job-meta" style="margin-bottom: 8px;">
+            <span>Location: ${job.location}</span>
+            <span style="color: var(--border-color); margin: 0 4px;">&bull;</span>
+            <span>Experience: ${job.experienceLevel}</span>
           </div>
 
           ${job.applyPriority ? `
             <div style="margin-bottom: 10px;">
-              <span class="badge" style="background-color: var(--google-green-surface); color: var(--google-green); font-weight: 600;">
-                ✓ ${job.applyPriority}
+              <span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-primary); border: 1px solid var(--border-color); font-weight: 500;">
+                Priority: ${job.applyPriority}
               </span>
             </div>
           ` : ""}
 
           <p class="job-desc">${job.description}</p>
 
-          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; background-color: var(--bg-surface-hover); padding: 8px 12px; border-radius: var(--radius-sm);">
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; background-color: var(--bg-surface-hover); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
             <strong>Requirements:</strong> ${job.qualifications}
           </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
           <span style="font-size: 11px; color: var(--text-muted);">${job.sourcePortal}</span>
-          <a href="${job.applyUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          <a href="${job.applyUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
             Apply on Official Site &rarr;
           </a>
         </div>
@@ -1525,34 +1515,36 @@ class EngineeringWorkspace {
     if (tokenContainer) {
       const tokens = AuthService.getGuestTokens();
       if (tokens.length === 0) {
-        tokenContainer.innerHTML = `<div style="color: var(--text-muted);">No active guest tokens generated.</div>`;
+        tokenContainer.innerHTML = `<div style="color: var(--text-muted); padding: 8px 0;">No active guest tokens generated.</div>`;
       } else {
         tokenContainer.innerHTML = `
-          <table class="data-table" style="margin-top: 8px;">
-            <thead>
-              <tr>
-                <th>Token</th>
-                <th>Label</th>
-                <th>Permission Scope</th>
-                <th>Created</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tokens.map((t) => `
+          <div class="table-container" style="width: 100%; overflow-x: auto; margin-top: 8px;">
+            <table class="data-table" style="min-width: 480px; width: 100%;">
+              <thead>
                 <tr>
-                  <td><code>${t.token}</code></td>
-                  <td>${t.label}</td>
-                  <td><span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${t.scope || "full"}</span></td>
-                  <td style="color: var(--text-muted); font-size: 11px;">${new Date(t.createdAt).toLocaleDateString()}</td>
-                  <td style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="btn btn-outline btn-sm btn-copy-link" data-token="${t.token}">Copy Link</button>
-                    <button class="btn btn-outline btn-sm btn-revoke" data-token="${t.token}">Revoke</button>
-                  </td>
+                  <th>Token</th>
+                  <th>Label</th>
+                  <th>Permission Scope</th>
+                  <th>Created</th>
+                  <th>Action</th>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${tokens.map((t) => `
+                  <tr>
+                    <td><code>${t.token}</code></td>
+                    <td>${t.label}</td>
+                    <td><span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">${t.scope || "full"}</span></td>
+                    <td style="color: var(--text-muted); font-size: 11px;">${new Date(t.createdAt).toLocaleDateString()}</td>
+                    <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                      <button class="btn btn-outline btn-sm btn-copy-link" data-token="${t.token}">Copy Link</button>
+                      <button class="btn btn-outline btn-sm btn-revoke" data-token="${t.token}">Revoke</button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
         `;
 
         tokenContainer.querySelectorAll(".btn-copy-link").forEach((btn) => {
@@ -1583,31 +1575,33 @@ class EngineeringWorkspace {
     if (reqContainer) {
       const reqs = AuthService.getAccessRequests();
       if (reqs.length === 0) {
-        reqContainer.innerHTML = `<div style="color: var(--text-muted);">No pending access requests.</div>`;
+        reqContainer.innerHTML = `<div style="color: var(--text-muted); padding: 8px 0;">No pending access requests.</div>`;
       } else {
         reqContainer.innerHTML = `
-          <table class="data-table" style="margin-top: 8px;">
-            <thead>
-              <tr>
-                <th>Applicant</th>
-                <th>Email</th>
-                <th>Requested Scope</th>
-                <th>Reason</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${reqs.map((r) => `
+          <div class="table-container" style="width: 100%; overflow-x: auto; margin-top: 8px;">
+            <table class="data-table" style="min-width: 500px; width: 100%;">
+              <thead>
                 <tr>
-                  <td style="font-weight: 500;">${r.name}</td>
-                  <td style="color: var(--text-secondary);">${r.email}</td>
-                  <td><span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${r.requestedScope || "careers_only"}</span></td>
-                  <td style="font-size: 12px;">${r.reason}</td>
-                  <td style="color: var(--text-muted); font-size: 11px;">${r.timestamp}</td>
+                  <th>Applicant</th>
+                  <th>Email</th>
+                  <th>Requested Scope</th>
+                  <th>Reason</th>
+                  <th>Date</th>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${reqs.map((r) => `
+                  <tr>
+                    <td style="font-weight: 500;">${r.name}</td>
+                    <td style="color: var(--text-secondary); word-break: break-all; max-width: 140px; font-size: 12px;">${r.email}</td>
+                    <td><span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">${r.requestedScope || "careers_only"}</span></td>
+                    <td style="font-size: 12px; word-break: break-word; max-width: 160px;">${r.reason}</td>
+                    <td style="color: var(--text-muted); font-size: 11px;">${r.timestamp}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
         `;
       }
     }
