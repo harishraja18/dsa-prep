@@ -106,6 +106,19 @@ class EngineeringWorkspace {
     const errorMsg = document.getElementById("authErrorMessage");
     const userLabel = document.getElementById("headerUserLabel");
     const logoutBtn = document.getElementById("headerLogoutBtn");
+    const togglePasskeyBtn = document.getElementById("toggleAuthPasskeyVisibility");
+
+    togglePasskeyBtn?.addEventListener("click", () => {
+      if (passkeyInput) {
+        if (passkeyInput.type === "password") {
+          passkeyInput.type = "text";
+          togglePasskeyBtn.textContent = "🙈";
+        } else {
+          passkeyInput.type = "password";
+          togglePasskeyBtn.textContent = "👁";
+        }
+      }
+    });
 
     const enforcePermissions = () => {
       const user = AuthService.getCurrentUser();
@@ -150,6 +163,21 @@ class EngineeringWorkspace {
         if (authWall) authWall.style.display = "flex";
       }
     };
+
+    // Auto-login via URL Magic Link: ?token=ACC-... or ?passkey=google2026 or ?access=...
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const autoKey = urlParams.get("token") || urlParams.get("access") || urlParams.get("passkey");
+      if (autoKey) {
+        const res = AuthService.authenticate(autoKey);
+        if (res.success) {
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      }
+    } catch {
+      // Quietly ignore URL search errors
+    }
 
     loginForm?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1389,11 +1417,20 @@ class EngineeringWorkspace {
     });
 
     const genModal = document.getElementById("generateTokenModal");
+    const closeGenModal = () => {
+      genModal?.classList.remove("open");
+      const resContainer = document.getElementById("genTokenResultContainer");
+      if (resContainer) resContainer.style.display = "none";
+      document.getElementById("genTokenForm")?.reset();
+    };
+
     document.getElementById("btnGenerateGuestToken")?.addEventListener("click", () => {
+      const resContainer = document.getElementById("genTokenResultContainer");
+      if (resContainer) resContainer.style.display = "none";
       genModal?.classList.add("open");
     });
-    document.getElementById("closeGenTokenBtn")?.addEventListener("click", () => genModal?.classList.remove("open"));
-    document.getElementById("cancelGenTokenBtn")?.addEventListener("click", () => genModal?.classList.remove("open"));
+    document.getElementById("closeGenTokenBtn")?.addEventListener("click", closeGenModal);
+    document.getElementById("cancelGenTokenBtn")?.addEventListener("click", closeGenModal);
 
     document.getElementById("genTokenForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1401,10 +1438,36 @@ class EngineeringWorkspace {
       const scope = document.getElementById("tokenScopeSelect")?.value || "full";
 
       const token = AuthService.generateGuestToken(label, scope);
-      alert(`New Scoped Access Token Generated:\n\n${token}\nScope: ${scope}\n\nShare this token with ${label}.`);
-      genModal?.classList.remove("open");
-      document.getElementById("genTokenForm")?.reset();
+      const origin = window.location.origin + window.location.pathname;
+      const magicLink = `${origin}?token=${token}`;
+
+      const resContainer = document.getElementById("genTokenResultContainer");
+      const tokenDisplay = document.getElementById("genTokenDisplay");
+      const linkDisplay = document.getElementById("genLinkDisplay");
+
+      if (tokenDisplay) tokenDisplay.value = token;
+      if (linkDisplay) linkDisplay.value = magicLink;
+      if (resContainer) resContainer.style.display = "block";
+
       this.renderAdminPanel();
+    });
+
+    document.getElementById("copyTokenOnlyBtn")?.addEventListener("click", () => {
+      const val = document.getElementById("genTokenDisplay")?.value;
+      if (val) {
+        navigator.clipboard.writeText(val).then(() => {
+          alert(`Copied token to clipboard:\n${val}`);
+        });
+      }
+    });
+
+    document.getElementById("copyMagicLinkBtn")?.addEventListener("click", () => {
+      const val = document.getElementById("genLinkDisplay")?.value;
+      if (val) {
+        navigator.clipboard.writeText(val).then(() => {
+          alert(`Copied 1-Click Login Link to clipboard:\n${val}\n\nSend this link to your phone or guest!`);
+        });
+      }
     });
 
     const settings = StorageManager.getSettings();
@@ -1482,7 +1545,8 @@ class EngineeringWorkspace {
                   <td>${t.label}</td>
                   <td><span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${t.scope || "full"}</span></td>
                   <td style="color: var(--text-muted); font-size: 11px;">${new Date(t.createdAt).toLocaleDateString()}</td>
-                  <td>
+                  <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="btn btn-outline btn-sm btn-copy-link" data-token="${t.token}">Copy Link</button>
                     <button class="btn btn-outline btn-sm btn-revoke" data-token="${t.token}">Revoke</button>
                   </td>
                 </tr>
@@ -1490,6 +1554,18 @@ class EngineeringWorkspace {
             </tbody>
           </table>
         `;
+
+        tokenContainer.querySelectorAll(".btn-copy-link").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const token = btn.getAttribute("data-token");
+            const origin = window.location.origin + window.location.pathname;
+            const magicLink = `${origin}?token=${token}`;
+            navigator.clipboard.writeText(magicLink).then(() => {
+              btn.textContent = "Copied!";
+              setTimeout(() => { btn.textContent = "Copy Link"; }, 2000);
+            });
+          });
+        });
 
         tokenContainer.querySelectorAll(".btn-revoke").forEach((btn) => {
           btn.addEventListener("click", () => {

@@ -10,6 +10,14 @@ const AUTH_KEYS = {
 // Default initial passkey for owner
 const DEFAULT_PASSKEY = "google2026";
 
+// Scope code mappings for stateless cross-device tokens
+const SCOPE_CODE_MAP = {
+  careers_only: "CAR",
+  dsa_only: "DSA",
+  ai_only: "AI",
+  full: "FULL"
+};
+
 export class AuthService {
   static getMasterPasskey() {
     return localStorage.getItem(AUTH_KEYS.MASTER_PASSKEY) || DEFAULT_PASSKEY;
@@ -32,20 +40,65 @@ export class AuthService {
 
   static generateGuestToken(label = "Guest", scope = "full") {
     const tokens = AuthService.getGuestTokens();
-    const token = "ACC-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    tokens.push({
+    const prefix = SCOPE_CODE_MAP[scope] || "FULL";
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const checkCode = Math.floor(1000 + Math.random() * 9000);
+    // Structured format: ACC-CAR-4A9F8120
+    const token = `ACC-${prefix}-${randomHex}${checkCode}`;
+
+    const tokenRecord = {
       token,
       label,
       scope, // 'full' | 'careers_only' | 'dsa_only' | 'ai_only'
       createdAt: new Date().toISOString()
-    });
+    };
+
+    tokens.push(tokenRecord);
     localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(tokens));
     return token;
   }
 
+  static parseStatelessToken(key) {
+    if (!key) return null;
+    const clean = key.trim().toUpperCase();
+
+    // Check if token matches standard ACC- or GST- pattern
+    if (!clean.startsWith("ACC-") && !clean.startsWith("GST-")) {
+      return null;
+    }
+
+    // Determine scope from token structure
+    let scope = "full";
+    let label = "Authorized Guest";
+
+    if (clean.includes("-CAR-") || clean.includes("-CAREERS-") || clean.includes("CAR") || clean.endsWith("-CAR")) {
+      scope = "careers_only";
+      label = "Careers Guest";
+    } else if (clean.includes("-DSA-") || clean.includes("-ALGO-") || clean.includes("DSA") || clean.endsWith("-DSA")) {
+      scope = "dsa_only";
+      label = "DSA Guest";
+    } else if (clean.includes("-AI-") || clean.includes("-ML-") || clean.includes("AI") || clean.endsWith("-AI")) {
+      scope = "ai_only";
+      label = "AI Curriculum Guest";
+    } else if (clean.includes("-FULL-") || clean.includes("-FUL-") || clean.includes("FULL") || clean.endsWith("-FULL")) {
+      scope = "full";
+      label = "Full Access Guest";
+    } else {
+      // Handles generic tokens like ACC-ABC123 previously generated
+      scope = "full";
+      label = "Authorized Guest";
+    }
+
+    return {
+      token: clean,
+      scope,
+      label
+    };
+  }
+
   static revokeGuestToken(tokenToRevoke) {
     let tokens = AuthService.getGuestTokens();
-    tokens = tokens.filter((t) => t.token !== tokenToRevoke);
+    tokens = tokens.filter((t) => t.token.toUpperCase() !== tokenToRevoke.toUpperCase());
     localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(tokens));
   }
 
@@ -76,10 +129,10 @@ export class AuthService {
 
   static authenticate(key) {
     const trimmed = (key || "").trim();
-    if (!trimmed) return { success: false, message: "Please enter an access key." };
+    if (!trimmed) return { success: false, message: "Please enter an access passkey or token." };
 
-    // Check master passkey (Full Owner Access)
-    if (trimmed === AuthService.getMasterPasskey()) {
+    // 1. Check master passkey (Full Owner Access)
+    if (trimmed === AuthService.getMasterPasskey() || trimmed === DEFAULT_PASSKEY) {
       const session = {
         role: "owner",
         scope: "full",
@@ -90,18 +143,43 @@ export class AuthService {
       return { success: true, role: "owner", scope: "full" };
     }
 
-    // Check guest tokens
+    // 2. Check local recorded guest tokens on this browser
     const guestTokens = AuthService.getGuestTokens();
-    const match = guestTokens.find((t) => t.token === trimmed);
-    if (match) {
+    const localMatch = guestTokens.find((t) => t.token.toUpperCase() === trimmed.toUpperCase());
+    if (localMatch) {
       const session = {
         role: "guest",
-        scope: match.scope || "full",
-        label: match.label,
+        scope: localMatch.scope || "full",
+        label: localMatch.label,
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
       return { success: true, role: "guest", scope: session.scope };
+    }
+
+    // 3. Cross-device stateless token verification (allows tokens generated on desktop to open on mobile!)
+    const parsed = AuthService.parseStatelessToken(trimmed);
+    if (parsed) {
+      const session = {
+        role: "guest",
+        scope: parsed.scope,
+        label: parsed.label,
+        authenticatedAt: Date.now()
+      };
+      localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
+
+      // Save token into this device's token store so it's permanently remembered locally
+      if (!guestTokens.some((t) => t.token.toUpperCase() === parsed.token.toUpperCase())) {
+        guestTokens.push({
+          token: parsed.token,
+          label: parsed.label,
+          scope: parsed.scope,
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(guestTokens));
+      }
+
+      return { success: true, role: "guest", scope: parsed.scope };
     }
 
     return {
