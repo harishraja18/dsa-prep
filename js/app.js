@@ -149,12 +149,20 @@ class EngineeringWorkspace {
           // Full guest access: can view study tabs, but NEVER admin
           navButtons.forEach((btn) => {
             const tab = btn.getAttribute("data-tab");
-            btn.style.display = tab === "admin" ? "none" : "inline-flex";
+            if (tab === "admin") {
+              btn.style.setProperty("display", "none", "important");
+            } else {
+              btn.style.removeProperty("display");
+              btn.style.display = "inline-flex";
+            }
           });
         }
       } else {
-        // Owner only (Harish Raja): all tabs including admin are visible
-        navButtons.forEach((btn) => btn.style.display = "inline-flex");
+        // Owner only (Harish Raja): all tabs including admin are fully visible
+        navButtons.forEach((btn) => {
+          btn.style.removeProperty("display");
+          btn.style.display = "inline-flex";
+        });
       }
     };
 
