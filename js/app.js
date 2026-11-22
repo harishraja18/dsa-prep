@@ -6,12 +6,70 @@ import { StorageManager } from "./storage.js";
 import { StudyTimer } from "./timer.js";
 import { NewsService } from "./newsService.js";
 import { AuthService } from "./auth.js";
+import { ContestService } from "./contestService.js";
+import { DailyPlanner } from "./dailyPlanner.js";
+
+// Problem solving checklist to-do items
+const GUIDANCE_TODO_ITEMS = [
+  {
+    id: "g_step_1",
+    title: "1. Read Problem Twice Slowly",
+    desc: "Read the entire statement without typing any code. Note return types, input limits, and edge guarantees (e.g. sorted, positive, unique)."
+  },
+  {
+    id: "g_step_2",
+    title: "2. Constraints & Scale Analysis",
+    desc: "Calculate time budget from N: N <= 10^5 implies O(N log N) or O(N); N <= 20 implies O(2^N); N <= 500 implies O(N^3). Check memory limits."
+  },
+  {
+    id: "g_step_3",
+    title: "3. Write 3 Manual Test Cases",
+    desc: "Write down 3 distinct test cases: 1) Minimal base case (N=0 or 1), 2) Standard typical case, 3) Adversarial boundary case (duplicates, negatives, reversed)."
+  },
+  {
+    id: "g_step_4",
+    title: "4. Propose Naive Baseline & Pinpoint Bottleneck",
+    desc: "State brute-force time and space complexity explicitly. Explain why it fails and locate redundant recalculation."
+  },
+  {
+    id: "g_step_5",
+    title: "5. Match Algorithmic Pattern",
+    desc: "Check pattern checklist: Contiguous subarray -> Sliding Window / Prefix Sum; Sorted search -> Two Pointers / Binary Search; Next greater -> Monotonic Stack; Dependencies -> Topo Sort; Shortest path -> Dijkstra; Overlapping subproblems -> DP."
+  },
+  {
+    id: "g_step_6",
+    title: "6. State Big-O Proof Before Code",
+    desc: "State exact Time O(T) and Space O(S) complexities and confirm alignment with the interviewer before writing code."
+  },
+  {
+    id: "g_step_7",
+    title: "7. Production-Grade Clean Code",
+    desc: "Implement modular helper functions, self-documenting variable names, and defensive guard clauses for null/empty inputs."
+  },
+  {
+    id: "g_step_8",
+    title: "8. Line-by-Line Manual Dry Run",
+    desc: "Step through your code line-by-line using a variable state tracking table on your non-trivial sample input."
+  },
+  {
+    id: "g_step_9",
+    title: "9. Verify Bounds & Off-by-One Checks",
+    desc: "Verify 0-indexing boundaries (0 to N-1), loop conditions (< vs <=), midpoint overflow (low + (high - low) / 2), and empty collections."
+  },
+  {
+    id: "g_step_10",
+    title: "10. Post-Mortem & Spaced Review",
+    desc: "Log the core mental model and invariant into notes. Schedule spaced review for Day 1 and Day 3."
+  }
+];
 
 class EngineeringWorkspace {
   constructor() {
     this.newsService = new NewsService();
+    this.contestService = new ContestService();
     this.currentDsaProblem = null;
     this.currentAiTopic = null;
+    this.selectedPlannerMinutes = 120;
 
     this.timer = new StudyTimer(
       (tickData) => this.handleTimerTick(tickData),
@@ -22,6 +80,9 @@ class EngineeringWorkspace {
     this.initTheme();
     this.initNavigation();
     this.initOverview();
+    this.initDailyPlannerUI();
+    this.initContestHub();
+    this.initProblemSolvingGuidanceChecklist();
     this.initDsaDirectory();
     this.initAiCurriculum();
     this.initTimerControls();
@@ -29,7 +90,7 @@ class EngineeringWorkspace {
     this.initAdminAndSecurity();
   }
 
-  // --- AUTHENTICATION GATE ---
+  // --- AUTHENTICATION ---
   initAuth() {
     const authWall = document.getElementById("authWall");
     const loginForm = document.getElementById("authLoginForm");
@@ -76,15 +137,9 @@ class EngineeringWorkspace {
 
     // Request Access Modal
     const reqModal = document.getElementById("requestAccessModal");
-    document.getElementById("openRequestAccessBtn")?.addEventListener("click", () => {
-      reqModal?.classList.add("open");
-    });
-    document.getElementById("closeRequestAccessBtn")?.addEventListener("click", () => {
-      reqModal?.classList.remove("open");
-    });
-    document.getElementById("cancelRequestAccessBtn")?.addEventListener("click", () => {
-      reqModal?.classList.remove("open");
-    });
+    document.getElementById("openRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.add("open"));
+    document.getElementById("closeRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.remove("open"));
+    document.getElementById("cancelRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.remove("open"));
 
     document.getElementById("requestAccessForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -93,7 +148,7 @@ class EngineeringWorkspace {
       const reason = document.getElementById("reqReason")?.value;
 
       AuthService.submitAccessRequest(name, email, reason);
-      alert("Your access request has been recorded. The administrator (Harishraja) has been notified in their Administration tab.");
+      alert("Access request recorded. The administrator (Harishraja) has been notified in their Administration tab.");
       reqModal?.classList.remove("open");
       document.getElementById("requestAccessForm")?.reset();
     });
@@ -125,7 +180,6 @@ class EngineeringWorkspace {
     });
 
     document.getElementById("btnGoToGuide")?.addEventListener("click", () => this.switchTab("guide"));
-    document.getElementById("btnGoToDsa")?.addEventListener("click", () => this.switchTab("dsa"));
     document.getElementById("overviewStartPomodoro")?.addEventListener("click", () => {
       this.switchTab("timer");
       this.setTimerMode("pomodoro");
@@ -190,6 +244,212 @@ class EngineeringWorkspace {
     if (streakElem) streakElem.textContent = `${analytics.streak} Day${analytics.streak === 1 ? "" : "s"}`;
   }
 
+  // --- DAILY PLANNER & TIME ALLOCATOR ---
+  initDailyPlannerUI() {
+    const timeChips = document.querySelectorAll("#plannerTimeChips .time-chip");
+    timeChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        timeChips.forEach((c) => {
+          c.classList.remove("active", "btn-primary");
+          c.classList.add("btn-outline");
+        });
+        chip.classList.add("active", "btn-primary");
+        chip.classList.remove("btn-outline");
+        this.selectedPlannerMinutes = parseInt(chip.getAttribute("data-mins"), 10);
+      });
+    });
+
+    document.getElementById("btnGeneratePlan")?.addEventListener("click", () => {
+      const focus = document.getElementById("plannerFocusSelect")?.value || "balanced";
+      const plan = DailyPlanner.generateSchedule(this.selectedPlannerMinutes, focus);
+      this.renderDailyPlan(plan);
+    });
+
+    // Check if a plan exists for today
+    const existingPlan = DailyPlanner.getTodayPlan();
+    if (existingPlan) {
+      this.renderDailyPlan(existingPlan);
+    } else {
+      const initialPlan = DailyPlanner.generateSchedule(120, "balanced");
+      this.renderDailyPlan(initialPlan);
+    }
+  }
+
+  renderDailyPlan(plan) {
+    const container = document.getElementById("plannerScheduleContainer");
+    if (!container || !plan || !plan.items) return;
+
+    container.innerHTML = plan.items.map((item, idx) => `
+      <div class="planner-item-card ${item.completed ? "completed" : ""}" data-idx="${idx}">
+        <div style="display: flex; gap: 12px; align-items: flex-start; flex: 1;">
+          <input type="checkbox" class="todo-checkbox planner-task-check" data-idx="${idx}" ${item.completed ? "checked" : ""}>
+          <div>
+            <div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;">
+              <span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${item.timeBox}</span>
+              <span style="font-weight: 500; font-size: 14px; ${item.completed ? "text-decoration: line-through; color: var(--text-muted);" : ""}">${item.title}</span>
+              <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">[${item.category}]</span>
+            </div>
+            <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">${item.description}</p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-left: 12px; align-items: center;">
+          ${item.link && item.link.startsWith("http") ? `
+            <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">Watch / Open &rarr;</a>
+          ` : ""}
+          <button class="btn btn-primary btn-sm btn-start-planner-timer" data-title="${encodeURIComponent(item.title)}" data-mins="${item.durationMinutes}">
+            Start Timer
+          </button>
+        </div>
+      </div>
+    `).join("");
+
+    // Checkbox toggles
+    container.querySelectorAll(".planner-task-check").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        const idx = parseInt(cb.getAttribute("data-idx"), 10);
+        plan.items[idx].completed = cb.checked;
+        DailyPlanner.saveTodayPlan(plan);
+        this.renderDailyPlan(plan);
+      });
+    });
+
+    // Start timer buttons
+    container.querySelectorAll(".btn-start-planner-timer").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const title = decodeURIComponent(btn.getAttribute("data-title"));
+        const mins = parseInt(btn.getAttribute("data-mins"), 10);
+
+        this.switchTab("timer");
+        document.getElementById("timerActiveTopicText").textContent = title;
+        this.setTimerMode("pomodoro");
+        this.timer.setMode("pomodoro", mins);
+        this.timer.start(title, "Study Plan");
+      });
+    });
+  }
+
+  // --- CONTEST HUB (CODEFORCES & LEETCODE) ---
+  async initContestHub() {
+    const container = document.getElementById("contestListContainer");
+    if (!container) return;
+
+    container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">Checking upcoming Codeforces & LeetCode contests...</div>`;
+
+    document.getElementById("btnEnableNotifications")?.addEventListener("click", () => {
+      ContestService.requestNotificationPermission().then((granted) => {
+        if (granted) {
+          alert("Contest desktop notifications enabled! You will be alerted before upcoming rounds.");
+        } else {
+          alert("Notification permission denied in browser settings.");
+        }
+      });
+    });
+
+    try {
+      const contests = await this.contestService.getAllUpcomingContests();
+      if (!contests || contests.length === 0) {
+        container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">No upcoming contests scheduled in the next few days.</div>`;
+        return;
+      }
+
+      container.innerHTML = contests.slice(0, 4).map((c) => {
+        const dateStr = new Date(c.startTime).toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        const countdown = ContestService.formatCountdown(c.startTime);
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+            <div>
+              <div style="font-size: 11px; font-weight: 700; color: var(--google-blue); text-transform: uppercase;">${c.platform} • ${c.type}</div>
+              <div style="font-weight: 500; font-size: 13px;">${c.name}</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${dateStr} (${c.durationMinutes} min)</div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge" style="background-color: var(--google-green-surface); color: var(--google-green); font-weight: 600; margin-bottom: 6px;">${countdown}</span>
+              <div>
+                <a href="${c.link}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; font-weight: 500;">Register &rarr;</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Trigger notification if next contest is within 1 hour
+      const nextContest = contests[0];
+      if (nextContest && nextContest.startTime - Date.now() < 60 * 60 * 1000 && nextContest.startTime - Date.now() > 0) {
+        ContestService.sendNotification(
+          `Upcoming Contest Alert: ${nextContest.name}`,
+          `${nextContest.platform} contest begins in ${ContestService.formatCountdown(nextContest.startTime)}!`
+        );
+      }
+    } catch {
+      container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">Unable to load live contests. Check internet connectivity.</div>`;
+    }
+  }
+
+  // --- PROBLEM SOLVING GUIDANCE CHECKLIST (ACTIONABLE TO-DO LIST) ---
+  initProblemSolvingGuidanceChecklist() {
+    const container = document.getElementById("guidanceTodoList");
+    if (!container) return;
+
+    const storageKey = "ascent_guidance_todo_state";
+    const getSavedState = () => {
+      try {
+        const data = localStorage.getItem(storageKey);
+        return data ? JSON.parse(data) : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const renderList = () => {
+      const state = getSavedState();
+      container.innerHTML = GUIDANCE_TODO_ITEMS.map((item) => {
+        const isChecked = Boolean(state[item.id]);
+        return `
+          <div class="guidance-todo-item ${isChecked ? "checked" : ""}">
+            <input type="checkbox" class="todo-checkbox guidance-step-check" data-id="${item.id}" ${isChecked ? "checked" : ""}>
+            <div class="guidance-todo-content">
+              <div class="guidance-todo-title">${item.title}</div>
+              <div class="guidance-todo-desc">${item.desc}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      container.querySelectorAll(".guidance-step-check").forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const id = cb.getAttribute("data-id");
+          const cur = getSavedState();
+          cur[id] = cb.checked;
+          localStorage.setItem(storageKey, JSON.stringify(cur));
+          renderList();
+        });
+      });
+    };
+
+    renderList();
+
+    document.getElementById("btnResetGuidanceChecklist")?.addEventListener("click", () => {
+      if (confirm("Reset the problem-solving checklist for your next problem?")) {
+        localStorage.removeItem(storageKey);
+        renderList();
+      }
+    });
+
+    document.getElementById("btnCopyGuidanceChecklist")?.addEventListener("click", () => {
+      const text = GUIDANCE_TODO_ITEMS.map((i) => `[ ] ${i.title}\n    ${i.desc}`).join("\n\n");
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Checklist copied to clipboard! You can paste it into your notes.");
+      });
+    });
+  }
+
   // --- DSA DIRECTORY ---
   initDsaDirectory() {
     const topicFilter = document.getElementById("dsaTopicFilter");
@@ -211,7 +471,6 @@ class EngineeringWorkspace {
     document.getElementById("dsaDifficultyFilter")?.addEventListener("change", () => this.renderDsaTable());
     document.getElementById("dsaStatusFilter")?.addEventListener("change", () => this.renderDsaTable());
 
-    // Modals
     document.getElementById("closeProblemModalBtn")?.addEventListener("click", () => this.closeProblemModal());
     document.getElementById("btnModalSaveProblem")?.addEventListener("click", () => this.saveCurrentProblem());
 
@@ -223,7 +482,6 @@ class EngineeringWorkspace {
       this.timer.start(`Solving: ${this.currentDsaProblem.title}`, "DSA");
     });
 
-    // Add problem modal
     const addModal = document.getElementById("addProblemModal");
     document.getElementById("btnOpenAddProblemModal")?.addEventListener("click", () => addModal?.classList.add("open"));
     document.getElementById("closeAddProblemBtn")?.addEventListener("click", () => addModal?.classList.remove("open"));
@@ -246,7 +504,7 @@ class EngineeringWorkspace {
         difficulty,
         link: link || `https://www.google.com/search?q=${encodeURIComponent(title + " leetcode")}`,
         pattern: pattern || "Algorithmic Pattern",
-        keyInsight: insight || "Follow 8-step framework.",
+        keyInsight: insight || "Follow 10-step framework.",
         timeComp: "O(N)",
         spaceComp: "O(1)",
         status: "todo",
@@ -306,7 +564,7 @@ class EngineeringWorkspace {
           <td><span class="badge ${diffClass}">${p.difficulty}</span></td>
           <td style="color: var(--text-secondary);">${p.pattern || "—"}</td>
           <td style="color: var(--text-muted); font-size: 12px;">${p.timeComp || "O(N)"} / ${p.spaceComp || "O(1)"}</td>
-          <td style="font-weight: 500;">${stepCount}/8</td>
+          <td style="font-weight: 500;">${stepCount}/10</td>
         </tr>
       `;
     }).join("");
@@ -327,7 +585,7 @@ class EngineeringWorkspace {
 
     document.getElementById("modalProblemTitle").textContent = problem.title;
     document.getElementById("modalProblemTopic").textContent = problem.topic;
-    
+
     const diffBadge = document.getElementById("modalProblemDifficulty");
     diffBadge.textContent = problem.difficulty;
     diffBadge.className = `badge ${problem.difficulty === "Easy" ? "badge-easy" : problem.difficulty === "Medium" ? "badge-medium" : "badge-hard"}`;
@@ -355,7 +613,7 @@ class EngineeringWorkspace {
 
     const updateCounter = () => {
       const c = list.querySelectorAll(".step-check:checked").length;
-      document.getElementById("modalStepsCount").textContent = `${c}/8 Complete`;
+      document.getElementById("modalStepsCount").textContent = `${c}/10 Complete`;
     };
     updateCounter();
 
@@ -447,7 +705,7 @@ class EngineeringWorkspace {
     });
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching AI topics found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching AI topics found.</td></tr>`;
       return;
     }
 
@@ -461,7 +719,8 @@ class EngineeringWorkspace {
           <td style="font-weight: 500;">${t.title}</td>
           <td style="color: var(--text-secondary);">${t.module}</td>
           <td><span class="badge ${diffClass}">${t.difficulty}</span></td>
-          <td style="color: var(--text-secondary); font-size: 12px; max-width: 320px;">${t.practicalExercise || "—"}</td>
+          <td style="font-weight: 500; color: var(--google-blue);">${t.estimatedHours || 3.0} hrs</td>
+          <td style="color: var(--text-secondary); font-size: 12px; max-width: 280px;">${t.practicalExercise || "—"}</td>
           <td style="font-weight: 500;">${stepCount}/5</td>
         </tr>
       `;
@@ -483,13 +742,25 @@ class EngineeringWorkspace {
 
     document.getElementById("modalAiTitle").textContent = topic.title;
     document.getElementById("modalAiModule").textContent = topic.module;
-    
+    document.getElementById("modalAiEstimatedHours").textContent = `${topic.estimatedHours || 3.0} Hours Suggested`;
+
     const diffBadge = document.getElementById("modalAiDifficulty");
     diffBadge.textContent = topic.difficulty;
     diffBadge.className = `badge ${topic.difficulty === "Easy" ? "badge-easy" : topic.difficulty === "Medium" ? "badge-medium" : "badge-hard"}`;
 
     document.getElementById("modalAiConcepts").textContent = topic.keyConcepts || "Foundational concepts.";
     document.getElementById("modalAiExercise").textContent = topic.practicalExercise || "Implementation details.";
+
+    // Hourly Schedule Breakdown List
+    const scheduleContainer = document.getElementById("modalAiHourlyScheduleList");
+    if (scheduleContainer && topic.hourlySchedule) {
+      scheduleContainer.innerHTML = topic.hourlySchedule.map((s) => `
+        <div style="display: flex; gap: 8px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border-subtle);">
+          <strong style="color: var(--google-blue); min-width: 110px;">${s.hour}:</strong>
+          <span style="color: var(--text-secondary);">${s.task}</span>
+        </div>
+      `).join("");
+    }
 
     document.getElementById("modalAiStatus").value = topic.status || "todo";
     document.getElementById("modalAiNotes").value = topic.notes || "";
@@ -756,7 +1027,6 @@ class EngineeringWorkspace {
 
   // --- ADMINISTRATION & SECURITY ---
   initAdminAndSecurity() {
-    // Change passkey
     document.getElementById("changePasskeyForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
       const current = document.getElementById("currentPasskeyInput")?.value;
@@ -773,9 +1043,8 @@ class EngineeringWorkspace {
       }
     });
 
-    // Generate guest token
     document.getElementById("btnGenerateGuestToken")?.addEventListener("click", () => {
-      const label = prompt("Enter an identifier for this guest (e.g. Mentor, Peer, Recruiter):", "Guest");
+      const label = prompt("Enter an identifier for this guest (e.g. Mentor, Friend):", "Guest");
       if (label && label.trim()) {
         const token = AuthService.generateGuestToken(label.trim());
         alert(`New Authorized Access Token Generated:\n\n${token}\n\nShare this token with ${label} to allow them access.`);
@@ -783,7 +1052,6 @@ class EngineeringWorkspace {
       }
     });
 
-    // Targets form
     const settings = StorageManager.getSettings();
     const dailyInput = document.getElementById("dailyTargetHoursInput");
     const careerInput = document.getElementById("careerTargetHoursInput");
@@ -806,7 +1074,6 @@ class EngineeringWorkspace {
       this.updateOverview();
     });
 
-    // Export backup
     document.getElementById("btnExportBackup")?.addEventListener("click", () => {
       const str = "data:text/json;charset=utf-8," + encodeURIComponent(StorageManager.exportBackup());
       const a = document.createElement("a");
@@ -817,7 +1084,6 @@ class EngineeringWorkspace {
       a.remove();
     });
 
-    // Import backup
     document.getElementById("importBackupInput")?.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -837,7 +1103,6 @@ class EngineeringWorkspace {
   }
 
   renderAdminPanel() {
-    // Render guest tokens
     const tokenContainer = document.getElementById("guestTokenListContainer");
     if (tokenContainer) {
       const tokens = AuthService.getGuestTokens();
@@ -881,7 +1146,6 @@ class EngineeringWorkspace {
       }
     }
 
-    // Render access requests
     const reqContainer = document.getElementById("accessRequestsListContainer");
     if (reqContainer) {
       const reqs = AuthService.getAccessRequests();

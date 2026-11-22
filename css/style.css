@@ -2,7 +2,6 @@
 :root {
   --font-family: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   
-  /* Google Standard Colors (Light Mode Default) */
   --google-blue: #1a73e8;
   --google-blue-hover: #1557b0;
   --google-blue-surface: #e8f0fe;
@@ -142,7 +141,7 @@ a:hover {
   background-color: var(--google-green);
 }
 
-/* Nav Tabs */
+/* Navigation Tabs */
 .app-nav {
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
@@ -190,7 +189,7 @@ a:hover {
   display: block;
 }
 
-/* Metric Cards Grid */
+/* Cards & Metrics */
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -228,7 +227,6 @@ a:hover {
   margin-top: 4px;
 }
 
-/* Progress bar */
 .progress-bar-bg {
   width: 100%;
   height: 4px;
@@ -370,54 +368,133 @@ a:hover {
 .badge-status-mastered { background-color: var(--google-green-surface); color: var(--google-green); }
 .badge-status-needs_revision { background-color: var(--google-red-surface); color: var(--google-red); }
 
-/* Problem Solving Guide Section Styling */
-.guide-container {
+/* Problem Solving Checklist To-Do Style */
+.guidance-todo-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
-.guide-step-card {
+.guidance-todo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 16px 20px;
+  transition: border-color 0.15s ease;
+}
+.guidance-todo-item.checked {
+  background: var(--bg-surface-hover);
+  border-color: var(--google-green);
+}
+.guidance-todo-item:hover {
+  border-color: var(--google-blue);
 }
 
-.guide-step-header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 12px;
+.todo-checkbox {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--google-blue);
+  cursor: pointer;
 }
 
-.guide-step-num {
+.guidance-todo-content {
+  flex: 1;
+}
+
+.guidance-todo-title {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--google-blue);
-  background: var(--google-blue-surface);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-
-.guide-step-title {
-  font-size: 16px;
   font-weight: 500;
   color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.guidance-todo-item.checked .guidance-todo-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
 }
 
-.guide-step-body {
+.guidance-todo-desc {
+  font-size: 13px;
   color: var(--text-secondary);
-  font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.guide-list {
-  margin: 10px 0 0 20px;
-  color: var(--text-secondary);
+/* Daily Planner To-Do Cards */
+.planner-item-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
-.guide-list li {
+.planner-item-card:last-child {
+  border-bottom: none;
+}
+.planner-item-card.completed {
+  opacity: 0.6;
+}
+
+/* Contests Grid */
+.contests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.contest-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.contest-platform-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--google-blue);
+  text-transform: uppercase;
   margin-bottom: 6px;
+}
+
+/* News List */
+.news-item {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.news-item:last-child {
+  border-bottom: none;
+}
+.news-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.news-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.news-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Digital Clock */
+.clock-display {
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  margin: 20px 0;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 /* Modals */
@@ -529,42 +606,6 @@ a:hover {
   color: var(--text-secondary);
   font-size: 13px;
   margin-bottom: 24px;
-}
-
-/* Digital Clock */
-.clock-display {
-  font-size: 56px;
-  font-weight: 400;
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-  margin: 20px 0;
-  color: var(--text-primary);
-  text-align: center;
-}
-
-/* News List */
-.news-item {
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-.news-item:last-child {
-  border-bottom: none;
-}
-.news-meta {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.news-title {
-  font-size: 15px;
-  font-weight: 500;
-  margin-bottom: 6px;
-}
-.news-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
 }
 
 /* App Footer */

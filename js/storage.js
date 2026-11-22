@@ -4,36 +4,62 @@ import { INITIAL_DSA_PROBLEMS } from "./data/dsaRoadmap.js";
 import { INITIAL_AI_TOPICS } from "./data/aiRoadmap.js";
 
 const KEYS = {
-  DSA_PROBLEMS: "ascent_dsa_problems_v1",
-  AI_TOPICS: "ascent_ai_topics_v1",
+  DSA_PROBLEMS: "ascent_dsa_problems_v2",
+  AI_TOPICS: "ascent_ai_topics_v2",
   SESSIONS: "ascent_study_sessions_v1",
   SETTINGS: "ascent_user_settings_v1"
 };
 
 const DEFAULT_SETTINGS = {
-  userName: "Future Google SWE / AI Engineer",
+  userName: "Harishraja",
   dailyTargetHours: 4,
   careerGoalHours: 300,
-  theme: "dark"
+  theme: "light"
 };
 
 export class StorageManager {
-  // Load DSA Problems
+  // Load DSA Problems with intelligent merging of new additions
   static getDSAProblems() {
     try {
       const data = localStorage.getItem(KEYS.DSA_PROBLEMS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const stored = JSON.parse(data);
+        const storedMap = new Map(stored.map((p) => [p.id, p]));
+        
+        // Merge with initial list so new problems are automatically available
+        const merged = INITIAL_DSA_PROBLEMS.map((initial) => {
+          if (storedMap.has(initial.id)) {
+            return { ...initial, ...storedMap.get(initial.id) };
+          }
+          return {
+            ...initial,
+            status: "todo",
+            completedSteps: [],
+            notes: "",
+            solvedAt: null
+          };
+        });
+
+        // Also append any custom user-added problems
+        stored.forEach((p) => {
+          if (p.id.startsWith("custom_") && !merged.some((m) => m.id === p.id)) {
+            merged.push(p);
+          }
+        });
+
+        StorageManager.saveDSAProblems(merged);
+        return merged;
+      }
     } catch (e) {
       console.error("Error reading DSA problems:", e);
     }
-    // Initialize with default problems & empty user state
+
     const initial = INITIAL_DSA_PROBLEMS.map((prob) => ({
       ...prob,
-      status: "todo", // 'todo' | 'in_progress' | 'mastered' | 'needs_revision'
+      status: "todo",
       completedSteps: [],
       notes: "",
-      solvedAt: null,
-      revisitDate: null
+      solvedAt: null
     }));
     StorageManager.saveDSAProblems(initial);
     return initial;
@@ -47,14 +73,34 @@ export class StorageManager {
     }
   }
 
-  // Load AI Topics
+  // Load AI Topics with merging
   static getAITopics() {
     try {
       const data = localStorage.getItem(KEYS.AI_TOPICS);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const stored = JSON.parse(data);
+        const storedMap = new Map(stored.map((t) => [t.id, t]));
+
+        const merged = INITIAL_AI_TOPICS.map((initial) => {
+          if (storedMap.has(initial.id)) {
+            return { ...initial, ...storedMap.get(initial.id) };
+          }
+          return {
+            ...initial,
+            status: "todo",
+            completedSteps: [],
+            notes: "",
+            solvedAt: null
+          };
+        });
+
+        StorageManager.saveAITopics(merged);
+        return merged;
+      }
     } catch (e) {
       console.error("Error reading AI topics:", e);
     }
+
     const initial = INITIAL_AI_TOPICS.map((topic) => ({
       ...topic,
       status: "todo",
@@ -123,7 +169,7 @@ export class StorageManager {
     }
   }
 
-  // Calculations & Analytics
+  // Analytics Calculation
   static calculateAnalytics() {
     const sessions = StorageManager.getSessions();
     const dsa = StorageManager.getDSAProblems();
@@ -152,33 +198,25 @@ export class StorageManager {
       daysWithStudy.add(dayKey);
     });
 
-    // Calculate streak
     let streak = 0;
     let checkDate = new Date();
-    // Check if today was studied
     if (!daysWithStudy.has(checkDate.toDateString())) {
-      // Check if yesterday was studied
       checkDate.setDate(checkDate.getDate() - 1);
     }
-
     while (daysWithStudy.has(checkDate.toDateString())) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
-    // DSA stats
     const dsaTotal = dsa.length;
     const dsaMastered = dsa.filter((p) => p.status === "mastered").length;
     const dsaInProgress = dsa.filter((p) => p.status === "in_progress").length;
     const dsaRevision = dsa.filter((p) => p.status === "needs_revision").length;
 
-    // AI stats
     const aiTotal = ai.length;
     const aiMastered = ai.filter((t) => t.status === "mastered").length;
     const aiInProgress = ai.filter((t) => t.status === "in_progress").length;
 
-    // Google Readiness Score (0-100%)
-    // Weighted: 40% DSA Mastered, 25% AI Mastered, 25% Hours Logged toward goal, 10% Consistency streak
     const dsaScore = dsaTotal > 0 ? (dsaMastered / dsaTotal) * 40 : 0;
     const aiScore = aiTotal > 0 ? (aiMastered / aiTotal) * 25 : 0;
     const hoursScore = Math.min(25, ((totalMinutes / 60) / settings.careerGoalHours) * 25);
@@ -210,17 +248,15 @@ export class StorageManager {
     };
   }
 
-  // Backup & Restore
   static exportBackup() {
-    const backup = {
-      version: 1,
+    return JSON.stringify({
+      version: 2,
       exportedAt: new Date().toISOString(),
       dsa: StorageManager.getDSAProblems(),
       ai: StorageManager.getAITopics(),
       sessions: StorageManager.getSessions(),
       settings: StorageManager.getSettings()
-    };
-    return JSON.stringify(backup, null, 2);
+    }, null, 2);
   }
 
   static importBackup(jsonString) {
@@ -231,8 +267,7 @@ export class StorageManager {
       if (data.sessions) localStorage.setItem(KEYS.SESSIONS, JSON.stringify(data.sessions));
       if (data.settings) StorageManager.saveSettings(data.settings);
       return true;
-    } catch (e) {
-      console.error("Backup import error:", e);
+    } catch {
       return false;
     }
   }
