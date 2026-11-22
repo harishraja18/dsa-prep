@@ -1,4 +1,4 @@
-// Access Control and Authentication System
+// Access Control and Scoped Authentication System
 
 const AUTH_KEYS = {
   MASTER_PASSKEY: "ascent_auth_master_passkey",
@@ -7,7 +7,7 @@ const AUTH_KEYS = {
   ACCESS_REQUESTS: "ascent_auth_access_requests"
 };
 
-// Default initial passkey
+// Default initial passkey for owner
 const DEFAULT_PASSKEY = "google2026";
 
 export class AuthService {
@@ -30,12 +30,13 @@ export class AuthService {
     }
   }
 
-  static generateGuestToken(label = "Guest") {
+  static generateGuestToken(label = "Guest", scope = "full") {
     const tokens = AuthService.getGuestTokens();
     const token = "ACC-" + Math.random().toString(36).substring(2, 8).toUpperCase();
     tokens.push({
       token,
       label,
+      scope, // 'full' | 'careers_only' | 'dsa_only' | 'ai_only'
       createdAt: new Date().toISOString()
     });
     localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(tokens));
@@ -57,13 +58,14 @@ export class AuthService {
     }
   }
 
-  static submitAccessRequest(name, email, reason) {
+  static submitAccessRequest(name, email, reason, requestedScope = "careers_only") {
     const requests = AuthService.getAccessRequests();
     const newReq = {
       id: "req_" + Date.now(),
       name: name.trim(),
       email: email.trim(),
       reason: reason.trim(),
+      requestedScope,
       timestamp: new Date().toLocaleString(),
       status: "pending"
     };
@@ -76,14 +78,16 @@ export class AuthService {
     const trimmed = (key || "").trim();
     if (!trimmed) return { success: false, message: "Please enter an access key." };
 
-    // Check master passkey
+    // Check master passkey (Full Owner Access)
     if (trimmed === AuthService.getMasterPasskey()) {
       const session = {
         role: "owner",
+        scope: "full",
+        label: "Harishraja",
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
-      return { success: true, role: "owner" };
+      return { success: true, role: "owner", scope: "full" };
     }
 
     // Check guest tokens
@@ -92,16 +96,17 @@ export class AuthService {
     if (match) {
       const session = {
         role: "guest",
+        scope: match.scope || "full",
         label: match.label,
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
-      return { success: true, role: "guest" };
+      return { success: true, role: "guest", scope: session.scope };
     }
 
     return {
       success: false,
-      message: "Invalid passkey. Access denied without administrator permission."
+      message: "Invalid passkey or token. Access denied without administrator permission."
     };
   }
 

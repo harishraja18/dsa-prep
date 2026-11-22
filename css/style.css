@@ -1,4 +1,4 @@
-/* Google Engineering Workspace Style System */
+/* Google Engineering Workspace Style System - Mobile Responsive & Professional */
 :root {
   --font-family: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --font-mono: "Roboto Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -68,6 +68,7 @@ body {
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -86,16 +87,17 @@ a:hover {
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
   padding: 0 24px;
-  height: 60px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .brand-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brand-logo-text {
@@ -120,7 +122,7 @@ a:hover {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .user-status-pill {
@@ -133,6 +135,7 @@ a:hover {
   padding: 4px 12px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
 .user-status-dot {
@@ -140,6 +143,7 @@ a:hover {
   height: 8px;
   border-radius: 50%;
   background-color: var(--google-green);
+  flex-shrink: 0;
 }
 
 /* Navigation Tabs */
@@ -148,9 +152,13 @@ a:hover {
   border-bottom: 1px solid var(--border-color);
   padding: 0 24px;
   display: flex;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.app-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-tab-btn {
@@ -158,13 +166,14 @@ a:hover {
   border: none;
   border-bottom: 3px solid transparent;
   color: var(--text-secondary);
-  padding: 12px 12px;
+  padding: 12px 14px;
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
 }
 .nav-tab-btn:hover {
   color: var(--text-primary);
@@ -251,10 +260,12 @@ a:hover {
   font-size: 13px;
   font-weight: 500;
   padding: 8px 16px;
+  min-height: 36px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -277,6 +288,7 @@ a:hover {
 .btn-sm {
   padding: 4px 10px;
   font-size: 12px;
+  min-height: 30px;
 }
 
 /* Inputs & Filters */
@@ -295,6 +307,7 @@ a:hover {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
+  min-height: 36px;
   font-size: 13px;
   color: var(--text-primary);
   outline: none;
@@ -308,6 +321,7 @@ a:hover {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
+  min-height: 36px;
   font-size: 13px;
   color: var(--text-primary);
   outline: none;
@@ -319,13 +333,15 @@ a:hover {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  min-width: 600px;
 }
 
 .data-table th {
@@ -401,6 +417,7 @@ a:hover {
   height: 18px;
   accent-color: var(--google-blue);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .guidance-todo-content {
@@ -432,12 +449,31 @@ a:hover {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
+  gap: 12px;
 }
 .planner-item-card:last-child {
   border-bottom: none;
 }
 .planner-item-card.completed {
   opacity: 0.6;
+}
+
+/* In-Page Video Embed Player Container (Travel Mode) */
+.commute-video-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background-color: #000000;
+  margin-top: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.commute-video-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 
 /* In-Browser Code Text Editor */
@@ -457,11 +493,13 @@ a:hover {
   padding: 8px 16px;
   background-color: var(--bg-surface-hover);
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .code-textarea {
   width: 100%;
-  min-height: 340px;
+  min-height: 320px;
   padding: 16px;
   background-color: var(--bg-surface);
   color: var(--text-primary);
@@ -603,7 +641,7 @@ a:hover {
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
 .modal-overlay.open {
   display: flex;
@@ -714,4 +752,103 @@ a:hover {
   font-size: 12px;
   color: var(--text-muted);
   margin-top: auto;
+}
+
+/* ========================================================= */
+/* MOBILE VIEW OPTIMIZATIONS (Smartphones & Commute Devices)  */
+/* ========================================================= */
+@media (max-width: 768px) {
+  body {
+    font-size: 13.5px;
+  }
+
+  .app-header {
+    padding: 10px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .app-nav {
+    padding: 0 12px;
+    gap: 2px;
+  }
+  .nav-tab-btn {
+    padding: 10px 10px;
+    font-size: 12.5px;
+  }
+
+  .main-content {
+    padding: 14px 12px;
+  }
+
+  /* Compact 2x2 metrics on mobile */
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .card-value {
+    font-size: 22px;
+  }
+
+  /* Two-column splits stack vertically on mobile */
+  .split-2col, [style*="grid-template-columns: 1fr 1fr"], [style*="grid-template-columns: 2fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Jobs Grid single column on mobile */
+  .jobs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Code Editor adjustments for small screens */
+  .code-textarea {
+    font-size: 12.5px;
+    min-height: 260px;
+    padding: 12px;
+  }
+
+  .clock-display {
+    font-size: 42px;
+    margin: 12px 0;
+  }
+
+  /* Touch-friendly buttons on mobile */
+  .btn {
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  .filter-bar {
+    gap: 8px;
+  }
+  .search-input {
+    min-width: 100%;
+  }
+
+  .planner-item-card {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .planner-item-card > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+
+  .modal-card {
+    padding: 16px;
+  }
 }

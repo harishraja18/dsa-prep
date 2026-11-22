@@ -2,9 +2,9 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Engineering Preparation Workspace | Google DSA & AI</title>
-  <meta name="description" content="Professional Google & FAANG interview preparation platform with daily DSA code editor, live FAANG job openings for India and global, FastPrep OA archive, and cognitive problem-solving checklists.">
+  <meta name="description" content="Professional Google & FAANG interview preparation platform with daily DSA code editor, live FAANG job openings for India and global, FastPrep OA archive, and in-page travel study videos.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -57,6 +57,15 @@
           <input type="email" id="reqEmail" class="form-control" placeholder="name@example.com" required>
         </div>
         <div class="form-group">
+          <label class="form-label" for="reqScope">What do you want to access?</label>
+          <select id="reqScope" class="select-input" style="width: 100%;">
+            <option value="careers_only">Only Career Openings & Job Positions</option>
+            <option value="dsa_only">Only DSA Directory & Code Editor</option>
+            <option value="ai_only">Only AI Curriculum</option>
+            <option value="full">Full Workspace</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label" for="reqReason">Reason for Request</label>
           <textarea id="reqReason" class="form-control" rows="3" placeholder="Brief note to Harishraja..." required></textarea>
         </div>
@@ -92,7 +101,7 @@
   </header>
 
   <!-- Navigation Bar -->
-  <nav class="app-nav">
+  <nav class="app-nav" id="mainAppNav">
     <button class="nav-tab-btn active" data-tab="overview">Overview</button>
     <button class="nav-tab-btn" data-tab="daily-dsa">Daily DSA Editor</button>
     <button class="nav-tab-btn" data-tab="careers">FAANG Careers & Openings</button>
@@ -161,7 +170,7 @@
             <button class="btn btn-outline btn-sm time-chip" data-mins="10">10 min (Podcast / Micro)</button>
             <button class="btn btn-outline btn-sm time-chip" data-mins="20">20 min (1 Fast DSA Problem)</button>
             <button class="btn btn-outline btn-sm time-chip" data-mins="45">45 min (Google Mock)</button>
-            <button class="btn btn-outline btn-sm time-chip" data-mins="60">1 hour (Math + PyTorch)</button>
+            <button class="btn btn-outline btn-sm time-chip" data-mins="60" data-focus="commute">60 min Commute (Bus Travel Mode)</button>
             <button class="btn btn-outline btn-sm time-chip active btn-primary" data-mins="120">2 hours (Deep DSA + AI)</button>
             <button class="btn btn-outline btn-sm time-chip" data-mins="240">4 hours (Full Immersion)</button>
           </div>
@@ -171,6 +180,7 @@
           <span style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Primary Focus Area:</span>
           <select id="plannerFocusSelect" class="select-input">
             <option value="balanced">Balanced (DSA + AI Systems)</option>
+            <option value="commute">College Commute / Bus Travel (Watch Mock Interview)</option>
             <option value="dsa">Heavy DSA & Algorithmic Patterns</option>
             <option value="ai">AI & ML Engineering Deep Dive</option>
           </select>
@@ -187,7 +197,7 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <!-- Codeforces & LeetCode Contest Hub -->
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
             <h3 style="font-size: 15px; font-weight: 500;">Upcoming Contests (Codeforces & LeetCode)</h3>
             <button class="btn btn-outline btn-sm" id="btnEnableNotifications">Enable Alerts</button>
           </div>
@@ -225,19 +235,20 @@
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
           <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 4px;" id="dailyDsaHeading">Today's DSA Problem: Two Sum</h1>
-          <p style="color: var(--text-secondary); font-size: 13px;">Type your solution in the code editor below, submit it, and verify against test cases in real time.</p>
+          <p style="color: var(--text-secondary); font-size: 13px;">Rotates automatically daily. Type your solution below, submit it, and verify against test cases in real time.</p>
         </div>
         <div style="display: flex; gap: 8px;">
           <select id="dailyDsaChallengeSelect" class="select-input">
             <!-- Populated by JS -->
           </select>
+          <button class="btn btn-outline btn-sm" id="btnNextChallenge">Next Problem &rarr;</button>
         </div>
       </div>
 
       <!-- Problem Statement Card -->
       <div class="card" style="margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-          <div style="display: flex; gap: 8px; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <span class="badge badge-easy" id="dailyDsaDifficulty">Easy</span>
             <span class="badge" id="dailyDsaCategory" style="background-color: var(--bg-surface-hover);">Arrays & Hashing</span>
             <span class="badge" id="dailyDsaCompany" style="background-color: var(--google-blue-surface); color: var(--google-blue);">Google High-Frequency</span>
@@ -253,7 +264,7 @@
       <!-- In-Browser Code Text Editor -->
       <div class="code-editor-wrapper">
         <div class="code-editor-header">
-          <div style="display: flex; gap: 12px; align-items: center;">
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary);">Language:</span>
             <select id="codeEditorLanguage" class="select-input" style="padding: 4px 8px; font-size: 12px;">
               <option value="javascript">JavaScript (Live In-Browser Execution)</option>
@@ -283,7 +294,7 @@
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
           <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 4px;">Google & FAANG Openings (India & Global)</h1>
-          <p style="color: var(--text-secondary); font-size: 13px;">Curated active job openings for AI Engineers, ML Engineers, and Software Developers with direct application links.</p>
+          <p style="color: var(--text-secondary); font-size: 13px;">Active job openings for AI Engineers, ML Engineers, and Software Developers with direct live official portal queries.</p>
         </div>
         <div style="font-size: 12px; color: var(--text-muted);">
           Total Positions Tracked: <strong id="totalJobsCount" style="color: var(--text-primary);">0</strong>
@@ -525,7 +536,7 @@
       </div>
     </section>
 
-    <!-- TAB 10: ADMINISTRATION & SECURITY -->
+    <!-- TAB 10: ADMINISTRATION & SECURITY (SCOPED GUEST ACCESS) -->
     <section class="tab-pane" id="tab-admin">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
@@ -549,14 +560,14 @@
           </form>
         </div>
 
-        <!-- Authorized Guest Tokens -->
+        <!-- Authorized Guest Tokens with Scopes -->
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="font-size: 15px; font-weight: 500;">Authorized Guest Access Tokens</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+            <h3 style="font-size: 15px; font-weight: 500;">Scoped Guest Access Tokens</h3>
             <button class="btn btn-outline btn-sm" id="btnGenerateGuestToken">Generate New Token</button>
           </div>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-            Grant access to a friend or mentor. Revoke anytime.
+            Generate an access token with specific permissions (e.g. Careers Only, DSA Only, or Full). You can revoke it anytime.
           </p>
           <div id="guestTokenListContainer" style="font-size: 13px;">
             <!-- Rendered by JS -->
@@ -763,6 +774,35 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
           <button type="button" class="btn btn-outline" id="cancelAddProblemBtn">Cancel</button>
           <button type="submit" class="btn btn-primary">Add to Directory</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Generate Guest Token Modal -->
+  <div class="modal-overlay" id="generateTokenModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title">Generate Guest Access Token</div>
+        <button class="modal-close" id="closeGenTokenBtn">&times;</button>
+      </div>
+      <form id="genTokenForm">
+        <div class="form-group">
+          <label class="form-label" for="tokenGuestLabel">Guest Identifier / Name</label>
+          <input type="text" id="tokenGuestLabel" class="form-control" placeholder="e.g. Mentor, Friend, Recruiter" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tokenScopeSelect">Access Scope (Permissions)</label>
+          <select id="tokenScopeSelect" class="select-input" style="width: 100%;">
+            <option value="full">Full Workspace Access</option>
+            <option value="careers_only">Careers & Job Openings Only</option>
+            <option value="dsa_only">DSA Directory & Code Editor Only</option>
+            <option value="ai_only">AI Curriculum Only</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn btn-outline" id="cancelGenTokenBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Generate Token</button>
         </div>
       </form>
     </div>

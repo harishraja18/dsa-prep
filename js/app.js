@@ -98,7 +98,7 @@ class EngineeringWorkspace {
     this.initAdminAndSecurity();
   }
 
-  // --- AUTHENTICATION ---
+  // --- AUTHENTICATION & SCOPES ---
   initAuth() {
     const authWall = document.getElementById("authWall");
     const loginForm = document.getElementById("authLoginForm");
@@ -107,6 +107,37 @@ class EngineeringWorkspace {
     const userLabel = document.getElementById("headerUserLabel");
     const logoutBtn = document.getElementById("headerLogoutBtn");
 
+    const enforcePermissions = () => {
+      const user = AuthService.getCurrentUser();
+      if (!user) return;
+
+      const navButtons = document.querySelectorAll(".nav-tab-btn");
+      if (user.role === "guest" && user.scope && user.scope !== "full") {
+        navButtons.forEach((btn) => {
+          const tab = btn.getAttribute("data-tab");
+          if (user.scope === "careers_only") {
+            const allowed = tab === "careers" || tab === "overview";
+            btn.style.display = allowed ? "inline-flex" : "none";
+          } else if (user.scope === "dsa_only") {
+            const allowed = tab === "daily-dsa" || tab === "guide" || tab === "dsa" || tab === "overview";
+            btn.style.display = allowed ? "inline-flex" : "none";
+          } else if (user.scope === "ai_only") {
+            const allowed = tab === "ai" || tab === "overview";
+            btn.style.display = allowed ? "inline-flex" : "none";
+          }
+        });
+
+        // Hide admin tab for guests
+        document.querySelector('.nav-tab-btn[data-tab="admin"]')?.setAttribute("style", "display: none !important;");
+
+        if (user.scope === "careers_only") this.switchTab("careers");
+        else if (user.scope === "dsa_only") this.switchTab("daily-dsa");
+        else if (user.scope === "ai_only") this.switchTab("ai");
+      } else {
+        navButtons.forEach((btn) => btn.style.display = "inline-flex");
+      }
+    };
+
     const checkAuthStatus = () => {
       if (AuthService.isAuthenticated()) {
         if (authWall) authWall.style.display = "none";
@@ -114,6 +145,7 @@ class EngineeringWorkspace {
         if (userLabel) {
           userLabel.textContent = user && user.role === "owner" ? "Harishraja (Owner)" : `Guest (${user?.label || "Authorized"})`;
         }
+        enforcePermissions();
       } else {
         if (authWall) authWall.style.display = "flex";
       }
@@ -153,9 +185,10 @@ class EngineeringWorkspace {
       e.preventDefault();
       const name = document.getElementById("reqName")?.value;
       const email = document.getElementById("reqEmail")?.value;
+      const scope = document.getElementById("reqScope")?.value;
       const reason = document.getElementById("reqReason")?.value;
 
-      AuthService.submitAccessRequest(name, email, reason);
+      AuthService.submitAccessRequest(name, email, reason, scope);
       alert("Access request recorded. The administrator (Harishraja) has been notified in their Administration tab.");
       reqModal?.classList.remove("open");
       document.getElementById("requestAccessForm")?.reset();
@@ -221,6 +254,8 @@ class EngineeringWorkspace {
     if (tabId === "timer") this.renderSessionHistory();
     if (tabId === "news") this.loadNews();
     if (tabId === "admin") this.renderAdminPanel();
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // --- OVERVIEW ---
@@ -271,6 +306,12 @@ class EngineeringWorkspace {
         chip.classList.add("active", "btn-primary");
         chip.classList.remove("btn-outline");
         this.selectedPlannerMinutes = parseInt(chip.getAttribute("data-mins"), 10);
+        
+        const focusAttr = chip.getAttribute("data-focus");
+        if (focusAttr) {
+          const select = document.getElementById("plannerFocusSelect");
+          if (select) select.value = focusAttr;
+        }
       });
     });
 
@@ -293,25 +334,37 @@ class EngineeringWorkspace {
     const container = document.getElementById("plannerScheduleContainer");
     if (!container || !plan || !plan.items) return;
 
+    if (plan.items.length === 0) {
+      container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted);">No remaining tasks for today. Click "Generate Today's Schedule" to plan new focus blocks!</div>`;
+      return;
+    }
+
     container.innerHTML = plan.items.map((item, idx) => `
-      <div class="planner-item-card ${item.completed ? "completed" : ""}" data-idx="${idx}">
+      <div class="planner-item-card ${item.completed ? "completed" : ""}" data-id="${item.id}">
         <div style="display: flex; gap: 12px; align-items: flex-start; flex: 1;">
           <input type="checkbox" class="todo-checkbox planner-task-check" data-idx="${idx}" ${item.completed ? "checked" : ""}>
-          <div>
+          <div style="flex: 1;">
             <div style="display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;">
               <span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${item.timeBox}</span>
               <span style="font-weight: 500; font-size: 14px; ${item.completed ? "text-decoration: line-through; color: var(--text-muted);" : ""}">${item.title}</span>
               <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">[${item.category}]</span>
             </div>
             <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">${item.description}</p>
+            
+            ${item.isCommuteVideo && item.youtubeId ? `
+              <!-- Embedded In-Page Video Player for Travel / Commute Mode -->
+              <div class="commute-video-wrapper">
+                <iframe src="https://www.youtube-nocookie.com/embed/${item.youtubeId}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="${item.title}"></iframe>
+              </div>
+            ` : ""}
           </div>
         </div>
-        <div style="display: flex; gap: 8px; margin-left: 12px; align-items: center;">
-          ${item.link && item.link.startsWith("http") ? `
-            <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">Watch / Open &rarr;</a>
-          ` : ""}
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
           <button class="btn btn-primary btn-sm btn-start-planner-timer" data-title="${encodeURIComponent(item.title)}" data-mins="${item.durationMinutes}">
             Start Timer
+          </button>
+          <button class="btn btn-outline btn-sm btn-delete-plan-item" data-id="${item.id}" title="Remove task from today's plan" style="color: var(--google-red);">
+            &times;
           </button>
         </div>
       </div>
@@ -336,6 +389,14 @@ class EngineeringWorkspace {
         this.setTimerMode("pomodoro");
         this.timer.setMode("pomodoro", mins);
         this.timer.start(title, "Study Plan");
+      });
+    });
+
+    container.querySelectorAll(".btn-delete-plan-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const updated = DailyPlanner.deletePlanItem(id);
+        if (updated) this.renderDailyPlan(updated);
       });
     });
   }
@@ -375,7 +436,7 @@ class EngineeringWorkspace {
         const countdown = ContestService.formatCountdown(c.startTime);
 
         return `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); flex-wrap: wrap; gap: 8px;">
             <div>
               <div style="font-size: 11px; font-weight: 700; color: var(--google-blue); text-transform: uppercase;">${c.platform} • ${c.type}</div>
               <div style="font-weight: 500; font-size: 13px;">${c.name}</div>
@@ -421,6 +482,14 @@ class EngineeringWorkspace {
       });
     }
 
+    document.getElementById("btnNextChallenge")?.addEventListener("click", () => {
+      const idx = DAILY_CHALLENGES.findIndex((c) => c.id === this.currentDailyChallenge.id);
+      const nextIdx = (idx + 1) % DAILY_CHALLENGES.length;
+      this.currentDailyChallenge = DAILY_CHALLENGES[nextIdx];
+      if (challengeSelect) challengeSelect.value = this.currentDailyChallenge.id;
+      this.renderDailyDsaChallenge();
+    });
+
     const langSelect = document.getElementById("codeEditorLanguage");
     langSelect?.addEventListener("change", (e) => {
       this.currentDailyLanguage = e.target.value;
@@ -428,7 +497,6 @@ class EngineeringWorkspace {
     });
 
     const textarea = document.getElementById("codeEditorTextarea");
-    // Handle Tab key in code editor
     textarea?.addEventListener("keydown", (e) => {
       if (e.key === "Tab") {
         e.preventDefault();
@@ -502,7 +570,6 @@ class EngineeringWorkspace {
       summary.style.color = "var(--google-green)";
       summary.textContent = `ACCEPTED: ${res.passedCount} / ${res.totalCount} Test Cases Passed!`;
 
-      // Save to solved problems
       const problems = StorageManager.getDSAProblems();
       const match = problems.find((p) => p.title.toLowerCase() === this.currentDailyChallenge.title.toLowerCase());
       if (match) {
@@ -646,7 +713,7 @@ class EngineeringWorkspace {
         <h3 style="font-size: 17px; font-weight: 500; margin-bottom: 8px;">${oa.title}</h3>
         <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">${oa.description}</p>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; font-size: 12.5px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; font-size: 12.5px;" class="split-2col">
           <div>
             <strong style="color: var(--google-blue);">Optimal Pattern:</strong>
             <div style="color: var(--text-primary); margin-top: 2px;">${oa.pattern}</div>
@@ -661,7 +728,7 @@ class EngineeringWorkspace {
           <strong>Approach:</strong> ${oa.approach}
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; flex-wrap: wrap; gap: 8px;">
           <span style="color: var(--text-muted);">Sample: <code>${oa.sampleInput}</code> &rarr; <strong>${oa.expectedOutput}</strong></span>
           <a href="${oa.leetcodeUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
             Practice Equivalent on LeetCode &rarr;
@@ -1321,13 +1388,23 @@ class EngineeringWorkspace {
       }
     });
 
+    const genModal = document.getElementById("generateTokenModal");
     document.getElementById("btnGenerateGuestToken")?.addEventListener("click", () => {
-      const label = prompt("Enter an identifier for this guest (e.g. Mentor, Friend):", "Guest");
-      if (label && label.trim()) {
-        const token = AuthService.generateGuestToken(label.trim());
-        alert(`New Authorized Access Token Generated:\n\n${token}\n\nShare this token with ${label} to allow them access.`);
-        this.renderAdminPanel();
-      }
+      genModal?.classList.add("open");
+    });
+    document.getElementById("closeGenTokenBtn")?.addEventListener("click", () => genModal?.classList.remove("open"));
+    document.getElementById("cancelGenTokenBtn")?.addEventListener("click", () => genModal?.classList.remove("open"));
+
+    document.getElementById("genTokenForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const label = document.getElementById("tokenGuestLabel")?.value.trim() || "Guest";
+      const scope = document.getElementById("tokenScopeSelect")?.value || "full";
+
+      const token = AuthService.generateGuestToken(label, scope);
+      alert(`New Scoped Access Token Generated:\n\n${token}\nScope: ${scope}\n\nShare this token with ${label}.`);
+      genModal?.classList.remove("open");
+      document.getElementById("genTokenForm")?.reset();
+      this.renderAdminPanel();
     });
 
     const settings = StorageManager.getSettings();
@@ -1393,6 +1470,7 @@ class EngineeringWorkspace {
               <tr>
                 <th>Token</th>
                 <th>Label</th>
+                <th>Permission Scope</th>
                 <th>Created</th>
                 <th>Action</th>
               </tr>
@@ -1402,6 +1480,7 @@ class EngineeringWorkspace {
                 <tr>
                   <td><code>${t.token}</code></td>
                   <td>${t.label}</td>
+                  <td><span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${t.scope || "full"}</span></td>
                   <td style="color: var(--text-muted); font-size: 11px;">${new Date(t.createdAt).toLocaleDateString()}</td>
                   <td>
                     <button class="btn btn-outline btn-sm btn-revoke" data-token="${t.token}">Revoke</button>
@@ -1436,6 +1515,7 @@ class EngineeringWorkspace {
               <tr>
                 <th>Applicant</th>
                 <th>Email</th>
+                <th>Requested Scope</th>
                 <th>Reason</th>
                 <th>Date</th>
               </tr>
@@ -1445,6 +1525,7 @@ class EngineeringWorkspace {
                 <tr>
                   <td style="font-weight: 500;">${r.name}</td>
                   <td style="color: var(--text-secondary);">${r.email}</td>
+                  <td><span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${r.requestedScope || "careers_only"}</span></td>
                   <td style="font-size: 12px;">${r.reason}</td>
                   <td style="color: var(--text-muted); font-size: 11px;">${r.timestamp}</td>
                 </tr>

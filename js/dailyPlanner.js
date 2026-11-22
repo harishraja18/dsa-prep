@@ -1,8 +1,8 @@
-// Daily Smart Time Allocator & Schedule Generator
+// Daily Smart Time Allocator & Schedule Generator with Task Deletion & Travel Presets
 
-import { MICRO_RESOURCES } from "./data/podcastsAndResources.js";
+import { MICRO_RESOURCES, COMMUTE_VIDEOS } from "./data/podcastsAndResources.js";
 
-const PLANNER_STORAGE_KEY = "ascent_daily_plan_v1";
+const PLANNER_STORAGE_KEY = "ascent_daily_plan_v2";
 
 export class DailyPlanner {
   static getTodayPlan() {
@@ -24,12 +24,45 @@ export class DailyPlanner {
     }));
   }
 
+  static deletePlanItem(taskId) {
+    const plan = DailyPlanner.getTodayPlan();
+    if (!plan || !plan.items) return null;
+    plan.items = plan.items.filter((item) => item.id !== taskId);
+    DailyPlanner.saveTodayPlan(plan);
+    return plan;
+  }
+
   static generateSchedule(availableMinutes, focusArea = "balanced") {
     const mins = parseInt(availableMinutes, 10);
     const scheduleItems = [];
 
+    // Case 0: College Commute / Bus Travel Preset (45 - 60 minutes)
+    if (focusArea === "commute") {
+      const video = COMMUTE_VIDEOS[Math.floor(Math.random() * COMMUTE_VIDEOS.length)];
+      scheduleItems.push({
+        id: "task_commute_1",
+        timeBox: "45 min",
+        durationMinutes: 45,
+        title: `Travel Mode: ${video.title}`,
+        category: "In-Page Video / Travel Study",
+        description: `${video.description} Takeaway: ${video.keyTakeaway}`,
+        youtubeId: video.youtubeId,
+        isCommuteVideo: true,
+        completed: false
+      });
+      scheduleItems.push({
+        id: "task_commute_2",
+        timeBox: "15 min",
+        durationMinutes: 15,
+        title: "Travel Reflection & Interview Takeaway Notes",
+        category: "Review",
+        description: "Review communication flow and note 3 algorithmic strategies observed during the mock interview.",
+        link: "#guide",
+        completed: false
+      });
+    }
     // Case 1: Micro slot (10 - 15 minutes)
-    if (mins <= 15) {
+    else if (mins <= 15) {
       const podcast = MICRO_RESOURCES[Math.floor(Math.random() * MICRO_RESOURCES.length)];
       scheduleItems.push({
         id: "task_1",
@@ -50,17 +83,17 @@ export class DailyPlanner {
         durationMinutes: 15,
         title: "Solve 1 Medium Google DSA Problem",
         category: "DSA Practice",
-        description: "Pick 1 problem from DSA Directory (e.g. Subarray Sum Equals K). Follow 8-step framework and dry run before coding.",
-        link: "#dsa",
+        description: "Solve today's challenge in the Daily DSA Editor with real test-case verification.",
+        link: "#daily-dsa",
         completed: false
       });
       scheduleItems.push({
         id: "task_2",
         timeBox: `${mins - 15} min`,
         durationMinutes: mins - 15,
-        title: "Micro Review / Technical Insight",
-        category: "AI / DSA Takeaways",
-        description: "Write down the single invariant pattern and review 3 spaced repetition flashcards.",
+        title: "Micro Review / Technical Invariant",
+        category: "Takeaways",
+        description: "Document the optimal pattern in your notes for spaced repetition.",
         link: "#guide",
         completed: false
       });
@@ -84,7 +117,7 @@ export class DailyPlanner {
           durationMinutes: 25,
           title: "PyTorch MultiHeadAttention Layer Implementation",
           category: "AI Coding",
-          description: "Code the forward pass with causal mask in PyTorch from scratch without nn.MultiheadAttention.",
+          description: "Code the forward pass with causal mask in PyTorch from scratch without high-level wrappers.",
           link: "#ai",
           completed: false
         });
@@ -117,9 +150,9 @@ export class DailyPlanner {
         id: "task_1",
         timeBox: "60 min",
         durationMinutes: 60,
-        title: "Deep DSA Pattern Focus (2 Google Medium Problems)",
+        title: "Deep DSA Pattern Focus (2 Google Problems)",
         category: "DSA Practice",
-        description: "Target high-frequency topic (e.g. Graphs / Topological Sort or Monotonic Stack). Write full dry runs.",
+        description: "Target high-frequency topic (Graphs / Topo Sort or Monotonic Stack). Write full dry runs.",
         link: "#dsa",
         completed: false
       });
@@ -137,9 +170,9 @@ export class DailyPlanner {
         id: "task_3",
         timeBox: "15 min",
         durationMinutes: 15,
-        title: "Google Engineering Podcast or Concept Reflection",
+        title: "Technical Commute / Podcast Reflection",
         category: "Podcast",
-        description: "Watch/listen to recommended technical breakdown (DeepMind or Karpathy overview).",
+        description: "Watch or listen to recommended technical breakdown (DeepMind or Karpathy overview).",
         link: MICRO_RESOURCES[0].link,
         completed: false
       });
@@ -152,7 +185,7 @@ export class DailyPlanner {
         durationMinutes: 90,
         title: "Block 1: Heavy DSA Mastery (Trees, Graphs, DP)",
         category: "DSA Practice",
-        description: "Solve 2-3 Google interview favorites (Alien Dictionary, Meeting Rooms III, or Burst Balloons). Follow complete 8-step framework.",
+        description: "Solve 2-3 Google interview favorites (Alien Dictionary, Meeting Rooms III, or Burst Balloons). Follow complete 10-step framework.",
         link: "#dsa",
         completed: false
       });
