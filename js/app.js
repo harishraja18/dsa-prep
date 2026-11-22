@@ -114,28 +114,46 @@ class EngineeringWorkspace {
       if (!user) return;
 
       const navButtons = document.querySelectorAll(".nav-tab-btn");
-      if (user.role === "guest" && user.scope && user.scope !== "full") {
-        navButtons.forEach((btn) => {
-          const tab = btn.getAttribute("data-tab");
-          if (user.scope === "careers_only") {
+      const adminNavBtn = document.querySelector('.nav-tab-btn[data-tab="admin"]');
+
+      // STRICT OWNER AUTHORIZATION:
+      // Only Harish Raja (role === 'owner', email === 'harishraja1802@gmail.com') can view or access Administration & Security.
+      // ALL guests (even with full access scope) are 100% blocked from the Administration tab.
+      const isOwner = user.role === "owner" && user.email === "harishraja1802@gmail.com";
+
+      if (!isOwner) {
+        if (adminNavBtn) adminNavBtn.style.setProperty("display", "none", "important");
+
+        if (user.scope === "careers_only") {
+          navButtons.forEach((btn) => {
+            const tab = btn.getAttribute("data-tab");
             const allowed = tab === "careers" || tab === "overview";
-            btn.style.display = allowed ? "inline-flex" : "none";
-          } else if (user.scope === "dsa_only") {
+            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
+          });
+          this.switchTab("careers");
+        } else if (user.scope === "dsa_only") {
+          navButtons.forEach((btn) => {
+            const tab = btn.getAttribute("data-tab");
             const allowed = tab === "daily-dsa" || tab === "guide" || tab === "dsa" || tab === "overview";
-            btn.style.display = allowed ? "inline-flex" : "none";
-          } else if (user.scope === "ai_only") {
+            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
+          });
+          this.switchTab("daily-dsa");
+        } else if (user.scope === "ai_only") {
+          navButtons.forEach((btn) => {
+            const tab = btn.getAttribute("data-tab");
             const allowed = tab === "ai" || tab === "overview";
-            btn.style.display = allowed ? "inline-flex" : "none";
-          }
-        });
-
-        // Hide admin tab for guests
-        document.querySelector('.nav-tab-btn[data-tab="admin"]')?.setAttribute("style", "display: none !important;");
-
-        if (user.scope === "careers_only") this.switchTab("careers");
-        else if (user.scope === "dsa_only") this.switchTab("daily-dsa");
-        else if (user.scope === "ai_only") this.switchTab("ai");
+            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
+          });
+          this.switchTab("ai");
+        } else {
+          // Full guest access: can view study tabs, but NEVER admin
+          navButtons.forEach((btn) => {
+            const tab = btn.getAttribute("data-tab");
+            btn.style.display = tab === "admin" ? "none" : "inline-flex";
+          });
+        }
       } else {
+        // Owner only (Harish Raja): all tabs including admin are visible
         navButtons.forEach((btn) => btn.style.display = "inline-flex");
       }
     };
@@ -145,7 +163,8 @@ class EngineeringWorkspace {
         if (authWall) authWall.style.display = "none";
         const user = AuthService.getCurrentUser();
         if (userLabel) {
-          userLabel.textContent = user && user.role === "owner" ? "Harishraja (Owner)" : `Guest (${user?.label || "Authorized"})`;
+          const isOwner = user && user.role === "owner" && user.email === "harishraja1802@gmail.com";
+          userLabel.textContent = isOwner ? "Harish Raja (harishraja1802@gmail.com)" : `Guest (${user?.label || "Authorized"})`;
         }
         enforcePermissions();
       } else {
@@ -295,6 +314,12 @@ class EngineeringWorkspace {
     if (tabId === "timer") this.renderSessionHistory();
     if (tabId === "news") this.loadNews();
     if (tabId === "admin") {
+      const user = AuthService.getCurrentUser();
+      const isOwner = user && user.role === "owner" && user.email === "harishraja1802@gmail.com";
+      if (!isOwner) {
+        this.switchTab("overview");
+        return;
+      }
       this.renderAdminPanel();
       AuthService.syncCloudRequests().then(() => this.renderAdminPanel());
     }
@@ -541,14 +566,6 @@ class EngineeringWorkspace {
           </div>
         `;
       }).join("");
-
-      const nextContest = contests[0];
-      if (nextContest && nextContest.startTime - Date.now() < 60 * 60 * 1000 && nextContest.startTime - Date.now() > 0) {
-        ContestService.sendNotification(
-          `Upcoming Contest Alert: ${nextContest.name}`,
-          `${nextContest.platform} contest begins in ${ContestService.formatCountdown(nextContest.startTime)}!`
-        );
-      }
     } catch {
       container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">Unable to load live contests. Check internet connectivity.</div>`;
     }
@@ -1599,6 +1616,21 @@ class EngineeringWorkspace {
   }
 
   renderAdminPanel() {
+    const user = AuthService.getCurrentUser();
+    const isOwner = user && user.role === "owner" && user.email === "harishraja1802@gmail.com";
+    if (!isOwner) {
+      const adminSection = document.getElementById("tab-admin");
+      if (adminSection) {
+        adminSection.innerHTML = `
+          <div class="card" style="padding: 32px; text-align: center;">
+            <h3 style="color: var(--google-red); margin-bottom: 8px;">Restricted Administrator Area</h3>
+            <p style="color: var(--text-secondary);">Administration & Security is strictly restricted to Harish Raja (harishraja1802@gmail.com).</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
     const tokenContainer = document.getElementById("guestTokenListContainer");
     if (tokenContainer) {
       const tokens = AuthService.getGuestTokens();
