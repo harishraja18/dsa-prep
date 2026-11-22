@@ -647,9 +647,12 @@
 
         <!-- Access Requests Queue -->
         <div class="card">
-          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Incoming Access Requests</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+            <h3 style="font-size: 15px; font-weight: 500;">Incoming Access Requests</h3>
+            <button class="btn btn-outline btn-sm" id="btnSyncAccessRequests">Sync Cloud Requests</button>
+          </div>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-            Requests submitted by unauthorized visitors who attempted to sign in.
+            Requests submitted by unauthorized visitors who attempted to sign in. Click Sync to fetch any submissions from mobile devices.
           </p>
           <div id="accessRequestsListContainer" style="font-size: 13px;">
             <!-- Rendered by JS -->

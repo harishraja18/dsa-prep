@@ -138,7 +138,48 @@ export class AuthService {
     };
     requests.unshift(newReq);
     localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
+
+    // Cross-device free cloud sync so mobile submissions reach desktop immediately
+    try {
+      fetch("https://ntfy.sh/harish_dsa_prep_access_2026", {
+        method: "POST",
+        headers: { "Title": `New Candidate Access: ${newReq.name}` },
+        body: JSON.stringify(newReq)
+      }).catch(() => {});
+    } catch {}
+
     return newReq;
+  }
+
+  static async syncCloudRequests() {
+    try {
+      const res = await fetch("https://ntfy.sh/harish_dsa_prep_access_2026/json?poll=1");
+      if (!res.ok) return AuthService.getAccessRequests();
+      const text = await res.text();
+      const lines = text.trim().split("\n").filter(Boolean);
+      const requests = AuthService.getAccessRequests();
+      let hasNew = false;
+
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line);
+          if (item.event === "message" && item.message) {
+            const reqData = JSON.parse(item.message);
+            if (reqData && reqData.id && !requests.some((r) => r.id === reqData.id)) {
+              requests.unshift(reqData);
+              hasNew = true;
+            }
+          }
+        } catch {}
+      }
+
+      if (hasNew) {
+        localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
+      }
+      return requests;
+    } catch {
+      return AuthService.getAccessRequests();
+    }
   }
 
   static approveRegistration(reqId) {

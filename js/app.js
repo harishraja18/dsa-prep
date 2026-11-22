@@ -294,7 +294,10 @@ class EngineeringWorkspace {
     if (tabId === "ai") this.renderAiTable();
     if (tabId === "timer") this.renderSessionHistory();
     if (tabId === "news") this.loadNews();
-    if (tabId === "admin") this.renderAdminPanel();
+    if (tabId === "admin") {
+      this.renderAdminPanel();
+      AuthService.syncCloudRequests().then(() => this.renderAdminPanel());
+    }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -1535,6 +1538,14 @@ class EngineeringWorkspace {
           alert(`Copied 1-Click Login Link to clipboard:\n${val}\n\nSend this link to your phone or guest!`);
         });
       }
+    });
+
+    document.getElementById("btnSyncAccessRequests")?.addEventListener("click", async () => {
+      const btn = document.getElementById("btnSyncAccessRequests");
+      if (btn) btn.textContent = "Syncing...";
+      await AuthService.syncCloudRequests();
+      this.renderAdminPanel();
+      if (btn) btn.textContent = "Sync Cloud Requests";
     });
 
     const settings = StorageManager.getSettings();
