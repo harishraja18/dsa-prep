@@ -4,11 +4,14 @@ const AUTH_KEYS = {
   MASTER_PASSKEY: "ascent_auth_master_passkey",
   SESSION: "ascent_auth_session",
   GUEST_TOKENS: "ascent_auth_guest_tokens",
-  ACCESS_REQUESTS: "ascent_auth_access_requests"
+  ACCESS_REQUESTS: "ascent_auth_access_requests",
+  REVOKED_TOKENS: "ascent_auth_revoked_tokens",
+  GUEST_PASSWORDS: "ascent_auth_guest_passwords"
 };
 
 // Default initial passkey for owner
 const DEFAULT_PASSKEY = "google2026";
+const OWNER_EMAIL = "harishraja1802@gmail.com";
 
 // Scope code mappings for stateless cross-device tokens
 const SCOPE_CODE_MAP = {
@@ -84,7 +87,6 @@ export class AuthService {
       scope = "full";
       label = "Full Access Guest";
     } else {
-      // Handles generic tokens like ACC-ABC123 previously generated
       scope = "full";
       label = "Authorized Guest";
     }
@@ -96,12 +98,129 @@ export class AuthService {
     };
   }
 
-  static revokeGuestToken(tokenToRevoke) {
-    let tokens = AuthService.getGuestTokens();
-    tokens = tokens.filter((t) => t.token.toUpperCase() !== tokenToRevoke.toUpperCase());
-    localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(tokens));
+  // Revocation Blacklist Engine
+  static getRevokedTokens() {
+    try {
+      const data = localStorage.getItem(AUTH_KEYS.REVOKED_TOKENS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
   }
 
+  static isTokenRevoked(key) {
+    if (!key) return false;
+    const clean = key.trim().toUpperCase();
+    const revoked = AuthService.getRevokedTokens();
+    if (revoked.includes(clean)) return true;
+
+    // Check if key is a custom password linked to a revoked token
+    const guestPasses = AuthService.getGuestPasswords();
+    const matchPass = guestPasses.find((p) => p.customPassword === key.trim());
+    if (matchPass && revoked.includes(matchPass.token.toUpperCase())) {
+      return true;
+    }
+    return false;
+  }
+
+  static revokeGuestToken(tokenToRevoke) {
+    if (!tokenToRevoke) return;
+    const clean = tokenToRevoke.trim().toUpperCase();
+
+    // 1. Add to permanent revoked blacklist
+    const revoked = AuthService.getRevokedTokens();
+    if (!revoked.includes(clean)) {
+      revoked.push(clean);
+      localStorage.setItem(AUTH_KEYS.REVOKED_TOKENS, JSON.stringify(revoked));
+    }
+
+    // 2. Remove from active local tokens
+    let tokens = AuthService.getGuestTokens();
+    tokens = tokens.filter((t) => t.token.toUpperCase() !== clean);
+    localStorage.setItem(AUTH_KEYS.GUEST_TOKENS, JSON.stringify(tokens));
+
+    // 3. Remove any custom personal passwords tied to this token
+    let guestPasses = AuthService.getGuestPasswords();
+    guestPasses = guestPasses.filter((p) => p.token.toUpperCase() !== clean);
+    localStorage.setItem(AUTH_KEYS.GUEST_PASSWORDS, JSON.stringify(guestPasses));
+
+    // 4. Update status in access requests
+    const requests = AuthService.getAccessRequests();
+    requests.forEach((r) => {
+      if (r.approvedToken && r.approvedToken.toUpperCase() === clean) {
+        r.status = "revoked";
+      }
+    });
+    localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
+
+    // 5. Broadcast revocation to cloud sync so other devices blacklist it immediately
+    try {
+      fetch("https://ntfy.sh/harish_dsa_prep_access_2026", {
+        method: "POST",
+        headers: { "Priority": "min" },
+        body: JSON.stringify({ type: "REVOKE", token: clean })
+      }).catch(() => {});
+    } catch {}
+  }
+
+  // Personal Custom Passwords for Guests
+  static getGuestPasswords() {
+    try {
+      const data = localStorage.getItem(AUTH_KEYS.GUEST_PASSWORDS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  static setGuestPassword(customPassword) {
+    const session = AuthService.getCurrentUser();
+    if (!session || session.role !== "guest") {
+      return { success: false, message: "Only authenticated guests can set personal passwords." };
+    }
+
+    const cleanPass = (customPassword || "").trim();
+    if (cleanPass.length < 4) {
+      return { success: false, message: "Password must be at least 4 characters long." };
+    }
+
+    if (
+      cleanPass.toLowerCase() === DEFAULT_PASSKEY.toLowerCase() ||
+      cleanPass.toLowerCase() === "google2026"
+    ) {
+      return { success: false, message: "This passkey is reserved exclusively for the administrator." };
+    }
+
+    const token = session.token || "GUEST_ACC";
+    const guestPasses = AuthService.getGuestPasswords();
+    const updated = guestPasses.filter((p) => p.token.toUpperCase() !== token.toUpperCase());
+    const newEntry = {
+      token,
+      customPassword: cleanPass,
+      scope: session.scope || "full",
+      label: session.label || "Authorized Guest",
+      createdAt: new Date().toISOString()
+    };
+    updated.push(newEntry);
+    localStorage.setItem(AUTH_KEYS.GUEST_PASSWORDS, JSON.stringify(updated));
+
+    // Update session
+    session.customPassword = cleanPass;
+    localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
+
+    // Sync custom password to cloud
+    try {
+      fetch("https://ntfy.sh/harish_dsa_prep_access_2026", {
+        method: "POST",
+        headers: { "Priority": "min" },
+        body: JSON.stringify({ type: "GUEST_PASSWORD", ...newEntry })
+      }).catch(() => {});
+    } catch {}
+
+    return { success: true, message: "Personal password set successfully! You can now sign in using this password." };
+  }
+
+  // Access Requests & Cloud Synchronization
   static getAccessRequests() {
     try {
       const data = localStorage.getItem(AUTH_KEYS.ACCESS_REQUESTS);
@@ -158,24 +277,50 @@ export class AuthService {
       const text = await res.text();
       const lines = text.trim().split("\n").filter(Boolean);
       const requests = AuthService.getAccessRequests();
-      let hasNew = false;
+      const revoked = AuthService.getRevokedTokens();
+      const guestPasses = AuthService.getGuestPasswords();
+      let hasReqUpdate = false;
+      let hasRevokeUpdate = false;
+      let hasPassUpdate = false;
 
       for (const line of lines) {
         try {
           const item = JSON.parse(line);
           if (item.event === "message" && item.message) {
-            const reqData = JSON.parse(item.message);
-            if (reqData && reqData.id && !requests.some((r) => r.id === reqData.id)) {
-              requests.unshift(reqData);
-              hasNew = true;
+            const data = JSON.parse(item.message);
+
+            // Handle Revocations broadcasted across devices
+            if (data.type === "REVOKE" && data.token) {
+              const cleanTok = data.token.toUpperCase();
+              if (!revoked.includes(cleanTok)) {
+                revoked.push(cleanTok);
+                hasRevokeUpdate = true;
+              }
+            } else if (data.type === "GUEST_PASSWORD" && data.customPassword && data.token) {
+              // Handle Guest Passwords broadcasted across devices
+              if (!guestPasses.some((p) => p.token === data.token && p.customPassword === data.customPassword)) {
+                guestPasses.push(data);
+                hasPassUpdate = true;
+              }
+            } else if (data.id && data.name && !requests.some((r) => r.id === data.id)) {
+              // Handle Candidate Registrations
+              requests.unshift(data);
+              hasReqUpdate = true;
             }
           }
         } catch {}
       }
 
-      if (hasNew) {
+      if (hasRevokeUpdate) {
+        localStorage.setItem(AUTH_KEYS.REVOKED_TOKENS, JSON.stringify(revoked));
+      }
+      if (hasPassUpdate) {
+        localStorage.setItem(AUTH_KEYS.GUEST_PASSWORDS, JSON.stringify(guestPasses));
+      }
+      if (hasReqUpdate) {
         localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
       }
+
       return requests;
     } catch {
       return AuthService.getAccessRequests();
@@ -214,6 +359,14 @@ export class AuthService {
     const trimmed = (key || "").trim();
     if (!trimmed) return { success: false, message: "Please enter an access passkey or token." };
 
+    // 0. Check Revocation Blacklist: If token/password is revoked, immediately deny entry!
+    if (AuthService.isTokenRevoked(trimmed)) {
+      return {
+        success: false,
+        message: "Access Denied: This access passkey or token has been revoked by the administrator (Harish Raja)."
+      };
+    }
+
     // 1. Check master passkey (Full Owner Access exclusively for Harish Raja)
     const master = AuthService.getMasterPasskey();
     if (
@@ -225,14 +378,35 @@ export class AuthService {
         role: "owner",
         scope: "full",
         label: "Harish Raja",
-        email: "harishraja1802@gmail.com",
+        email: OWNER_EMAIL,
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
-      return { success: true, role: "owner", scope: "full", email: "harishraja1802@gmail.com" };
+      return { success: true, role: "owner", scope: "full", email: OWNER_EMAIL };
     }
 
-    // 2. Check local recorded guest tokens on this browser
+    // 2. Check personal guest custom passwords
+    const guestPasses = AuthService.getGuestPasswords();
+    const passMatch = guestPasses.find((p) => p.customPassword === trimmed);
+    if (passMatch) {
+      if (AuthService.isTokenRevoked(passMatch.token)) {
+        return {
+          success: false,
+          message: "Access Denied: This access passkey or token has been revoked by the administrator (Harish Raja)."
+        };
+      }
+      const session = {
+        role: "guest",
+        scope: passMatch.scope || "full",
+        label: passMatch.label || "Authorized Guest",
+        token: passMatch.token,
+        authenticatedAt: Date.now()
+      };
+      localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
+      return { success: true, role: "guest", scope: session.scope };
+    }
+
+    // 3. Check local recorded guest tokens on this browser
     const guestTokens = AuthService.getGuestTokens();
     const localMatch = guestTokens.find((t) => t.token.toUpperCase() === trimmed.toUpperCase());
     if (localMatch) {
@@ -240,24 +414,32 @@ export class AuthService {
         role: "guest",
         scope: localMatch.scope || "full",
         label: localMatch.label,
+        token: localMatch.token,
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
       return { success: true, role: "guest", scope: session.scope };
     }
 
-    // 3. Cross-device stateless token verification (allows tokens generated on desktop to open on mobile!)
+    // 4. Cross-device stateless token verification
     const parsed = AuthService.parseStatelessToken(trimmed);
     if (parsed) {
+      if (AuthService.isTokenRevoked(parsed.token)) {
+        return {
+          success: false,
+          message: "Access Denied: This access passkey or token has been revoked by the administrator (Harish Raja)."
+        };
+      }
       const session = {
         role: "guest",
         scope: parsed.scope,
         label: parsed.label,
+        token: parsed.token,
         authenticatedAt: Date.now()
       };
       localStorage.setItem(AUTH_KEYS.SESSION, JSON.stringify(session));
 
-      // Save token into this device's token store so it's permanently remembered locally
+      // Cache token locally
       if (!guestTokens.some((t) => t.token.toUpperCase() === parsed.token.toUpperCase())) {
         guestTokens.push({
           token: parsed.token,
@@ -282,6 +464,13 @@ export class AuthService {
       const sessionStr = localStorage.getItem(AUTH_KEYS.SESSION);
       if (!sessionStr) return false;
       const session = JSON.parse(sessionStr);
+
+      // Check if session token was revoked in the background
+      if (session.role === "guest" && session.token && AuthService.isTokenRevoked(session.token)) {
+        AuthService.logout();
+        return false;
+      }
+
       return Boolean(session && session.role);
     } catch {
       return false;

@@ -160,17 +160,91 @@ class EngineeringWorkspace {
 
     const checkAuthStatus = () => {
       if (AuthService.isAuthenticated()) {
-        if (authWall) authWall.style.display = "none";
         const user = AuthService.getCurrentUser();
+
+        // Immediate check: if guest token was revoked, force logout!
+        if (user && user.role === "guest" && user.token && AuthService.isTokenRevoked(user.token)) {
+          AuthService.logout();
+          if (authWall) authWall.style.display = "flex";
+          alert("Your access has been revoked by the administrator (Harish Raja).");
+          return;
+        }
+
+        if (authWall) authWall.style.display = "none";
         if (userLabel) {
           const isOwner = user && user.role === "owner" && user.email === "harishraja1802@gmail.com";
           userLabel.textContent = isOwner ? "Harish Raja (harishraja1802@gmail.com)" : `Guest (${user?.label || "Authorized"})`;
         }
+
+        // Show/hide personal password setting button for guests
+        const setPassBtn = document.getElementById("btnGuestSetPassword");
+        if (setPassBtn) {
+          if (user && user.role === "guest") {
+            setPassBtn.style.display = "inline-flex";
+            setPassBtn.textContent = user.customPassword ? "Change Password" : "Set Personal Password";
+          } else {
+            setPassBtn.style.display = "none";
+          }
+        }
+
         enforcePermissions();
       } else {
         if (authWall) authWall.style.display = "flex";
+        const setPassBtn = document.getElementById("btnGuestSetPassword");
+        if (setPassBtn) setPassBtn.style.display = "none";
       }
     };
+
+    // Guest Personal Password Modal
+    const guestPassModal = document.getElementById("guestPasswordModal");
+    const openGuestPassBtn = document.getElementById("btnGuestSetPassword");
+    const closeGuestPassBtn = document.getElementById("closeGuestPasswordBtn");
+    const cancelGuestPassBtn = document.getElementById("cancelGuestPasswordBtn");
+    const guestPassForm = document.getElementById("guestPasswordForm");
+    const guestPassError = document.getElementById("guestPasswordError");
+
+    openGuestPassBtn?.addEventListener("click", () => {
+      guestPassModal?.classList.add("open");
+      if (guestPassError) guestPassError.style.display = "none";
+      document.getElementById("guestNewPassword")?.focus();
+    });
+
+    const closeGuestPass = () => {
+      guestPassModal?.classList.remove("open");
+      guestPassForm?.reset();
+      if (guestPassError) guestPassError.style.display = "none";
+    };
+
+    closeGuestPassBtn?.addEventListener("click", closeGuestPass);
+    cancelGuestPassBtn?.addEventListener("click", closeGuestPass);
+    guestPassModal?.addEventListener("click", (e) => {
+      if (e.target === guestPassModal) closeGuestPass();
+    });
+
+    guestPassForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById("guestNewPassword")?.value.trim();
+      const p2 = document.getElementById("guestConfirmPassword")?.value.trim();
+
+      if (p1 !== p2) {
+        if (guestPassError) {
+          guestPassError.textContent = "Passwords do not match. Please re-enter.";
+          guestPassError.style.display = "block";
+        }
+        return;
+      }
+
+      const res = AuthService.setGuestPassword(p1);
+      if (res.success) {
+        alert(res.message);
+        closeGuestPass();
+      } else {
+        if (guestPassError) {
+          guestPassError.textContent = res.message;
+          guestPassError.style.display = "block";
+        }
+      }
+    });
 
     // Auto-login via URL Magic Link: ?token=ACC-... or ?passkey=google2026 or ?access=...
     try {
@@ -522,16 +596,6 @@ class EngineeringWorkspace {
     if (!container) return;
 
     container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">Checking upcoming Codeforces & LeetCode contests...</div>`;
-
-    document.getElementById("btnEnableNotifications")?.addEventListener("click", () => {
-      ContestService.requestNotificationPermission().then((granted) => {
-        if (granted) {
-          alert("Contest desktop notifications enabled! You will be alerted before upcoming rounds.");
-        } else {
-          alert("Notification permission denied in browser settings.");
-        }
-      });
-    });
 
     try {
       const contests = await this.contestService.getAllUpcomingContests();
@@ -1682,8 +1746,9 @@ class EngineeringWorkspace {
         tokenContainer.querySelectorAll(".btn-revoke").forEach((btn) => {
           btn.addEventListener("click", () => {
             const token = btn.getAttribute("data-token");
-            if (confirm(`Revoke access token ${token}?`)) {
+            if (confirm(`Permanently revoke access for token ${token} and any associated personal passwords? This will immediately lock out the user on all devices.`)) {
               AuthService.revokeGuestToken(token);
+              alert(`Access Revoked: Token ${token} and any associated personal passwords have been permanently blacklisted.`);
               this.renderAdminPanel();
             }
           });
@@ -1716,6 +1781,8 @@ class EngineeringWorkspace {
                     statusBadge = `<span class="badge" style="background-color: var(--google-green-surface); color: var(--google-green); font-weight: 500;">Approved</span>`;
                   } else if (r.status === "rejected") {
                     statusBadge = `<span class="badge" style="background-color: var(--google-red-surface); color: var(--google-red);">Rejected</span>`;
+                  } else if (r.status === "revoked") {
+                    statusBadge = `<span class="badge" style="background-color: var(--google-red-surface); color: var(--google-red); font-weight: 500;">Revoked</span>`;
                   }
 
                   let actionBtns = "";
@@ -1727,7 +1794,10 @@ class EngineeringWorkspace {
                   } else if (r.status === "approved" && r.approvedToken) {
                     actionBtns = `
                       <button class="btn btn-outline btn-sm btn-copy-req-link" data-token="${r.approvedToken}">Copy Link</button>
+                      <button class="btn btn-outline btn-sm btn-revoke-req" data-token="${r.approvedToken}" data-id="${r.id}" style="color: var(--google-red); border-color: rgba(234, 67, 53, 0.4); margin-left: 4px;">Revoke</button>
                     `;
+                  } else if (r.status === "revoked") {
+                    actionBtns = `<span style="font-size: 11px; color: var(--text-muted);">Access Blocked</span>`;
                   } else {
                     actionBtns = `<span style="font-size: 11px; color: var(--text-muted);">None</span>`;
                   }
@@ -1796,6 +1866,17 @@ class EngineeringWorkspace {
               btn.textContent = "Copied!";
               setTimeout(() => { btn.textContent = "Copy Link"; }, 2000);
             });
+          });
+        });
+
+        reqContainer.querySelectorAll(".btn-revoke-req").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const token = btn.getAttribute("data-token");
+            if (confirm(`Permanently revoke access for token ${token} and any associated personal passwords? This will immediately lock out the candidate.`)) {
+              AuthService.revokeGuestToken(token);
+              alert(`Access Revoked: Token ${token} and any associated personal passwords have been permanently blacklisted.`);
+              this.renderAdminPanel();
+            }
           });
         });
       }

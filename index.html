@@ -112,8 +112,12 @@
     <div class="header-actions">
       <div class="user-status-pill">
         <span class="user-status-dot"></span>
-        <span id="headerUserLabel">Harishraja (Authenticated)</span>
+        <span id="headerUserLabel">Harish Raja (Owner)</span>
       </div>
+
+      <button class="btn btn-outline btn-sm" id="btnGuestSetPassword" style="display: none;" title="Create personal password">
+        Set Personal Password
+      </button>
 
       <button class="btn btn-outline btn-sm" id="themeToggleBtn" title="Toggle theme">
         Theme
@@ -224,7 +228,6 @@
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
             <h3 style="font-size: 15px; font-weight: 500;">Upcoming Contests (Codeforces & LeetCode)</h3>
-            <button class="btn btn-outline btn-sm" id="btnEnableNotifications">Enable Alerts</button>
           </div>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
             Compete in Codeforces rounds and LeetCode contests to build speed, composure, and edge-case agility.
@@ -612,7 +615,7 @@
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
         <!-- Access Control & Security -->
-        <div class="card">
+        <div class="card" style="min-width: 0;">
           <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Workspace Security & Master Passkey</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
             Update your master passkey to protect your personal workspace. This ensures only you can enter.
@@ -631,36 +634,8 @@
           </form>
         </div>
 
-        <!-- Authorized Guest Tokens with Scopes -->
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
-            <h3 style="font-size: 15px; font-weight: 500;">Scoped Guest Access Tokens</h3>
-            <button class="btn btn-outline btn-sm" id="btnGenerateGuestToken">Generate New Token</button>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-            Generate an access token with specific permissions (e.g. Careers Only, DSA Only, or Full). You can revoke it anytime.
-          </p>
-          <div id="guestTokenListContainer" style="font-size: 13px;">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-        <!-- Access Requests Queue -->
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
-            <h3 style="font-size: 15px; font-weight: 500;">Incoming Access Requests</h3>
-            <button class="btn btn-outline btn-sm" id="btnSyncAccessRequests">Sync Cloud Requests</button>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-            Requests submitted by unauthorized visitors who attempted to sign in. Click Sync to fetch any submissions from mobile devices.
-          </p>
-          <div id="accessRequestsListContainer" style="font-size: 13px;">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
         <!-- Data Backup & Goals -->
-        <div class="card">
+        <div class="card" style="min-width: 0;">
           <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Study Targets & Data Portability</h3>
           <form id="studyTargetsForm" style="margin-bottom: 20px;">
             <div class="form-group">
@@ -680,6 +655,34 @@
               Restore JSON
               <input type="file" id="importBackupInput" accept=".json" style="display: none;">
             </label>
+          </div>
+        </div>
+
+        <!-- Authorized Guest Tokens with Scopes (Full width) -->
+        <div class="card" style="grid-column: 1 / -1; width: 100%; min-width: 0; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+            <h3 style="font-size: 15px; font-weight: 500;">Scoped Guest Access Tokens</h3>
+            <button class="btn btn-outline btn-sm" id="btnGenerateGuestToken">Generate New Token</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Generate an access token with specific permissions (e.g. Careers Only, DSA Only, or Full). You can revoke it anytime.
+          </p>
+          <div id="guestTokenListContainer" style="font-size: 13px; width: 100%; min-width: 0; overflow-x: auto;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Access Requests Queue (Full width) -->
+        <div class="card" style="grid-column: 1 / -1; width: 100%; min-width: 0; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+            <h3 style="font-size: 15px; font-weight: 500;">Incoming Access Requests</h3>
+            <button class="btn btn-outline btn-sm" id="btnSyncAccessRequests">Sync Cloud Requests</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Requests submitted by unauthorized visitors who attempted to sign in. Click Sync to fetch any submissions from mobile devices.
+          </p>
+          <div id="accessRequestsListContainer" style="font-size: 13px; width: 100%; min-width: 0; overflow-x: auto;">
+            <!-- Rendered by JS -->
           </div>
         </div>
 
@@ -903,6 +906,34 @@
           Send the token or link to your mobile phone or guest via WhatsApp, SMS, or email. Opening the link will log in automatically!
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Guest Set Password Modal -->
+  <div class="modal-overlay" id="guestPasswordModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title">Set Your Personal Password</div>
+        <button class="modal-close" id="closeGuestPasswordBtn">&times;</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.4;">
+        Create a personal password so you can sign in directly on any device without remembering the long access token.
+      </p>
+      <form id="guestPasswordForm">
+        <div class="form-group">
+          <label class="form-label" for="guestNewPassword">New Personal Password</label>
+          <input type="password" id="guestNewPassword" class="form-control" placeholder="Create your personal password (min 4 chars)" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="guestConfirmPassword">Confirm Password</label>
+          <input type="password" id="guestConfirmPassword" class="form-control" placeholder="Re-enter personal password" required minlength="4">
+        </div>
+        <div id="guestPasswordError" style="color: var(--google-red); font-size: 12px; margin-bottom: 10px; display: none;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn btn-outline" id="cancelGuestPasswordBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Personal Password</button>
+        </div>
+      </form>
     </div>
   </div>
 
