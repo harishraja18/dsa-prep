@@ -194,18 +194,24 @@ class EngineeringWorkspace {
 
     // Request Access Modal
     const reqModal = document.getElementById("requestAccessModal");
-    document.getElementById("openRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.add("open"));
+    document.getElementById("openRequestAccessBtn")?.addEventListener("click", () => {
+      reqModal?.classList.add("open");
+      document.getElementById("reqName")?.focus();
+    });
     document.getElementById("closeRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.remove("open"));
     document.getElementById("cancelRequestAccessBtn")?.addEventListener("click", () => reqModal?.classList.remove("open"));
+    reqModal?.addEventListener("click", (e) => {
+      if (e.target === reqModal) reqModal.classList.remove("open");
+    });
 
     document.getElementById("requestAccessForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      const name = document.getElementById("reqName")?.value;
-      const email = document.getElementById("reqEmail")?.value;
+      const name = document.getElementById("reqName")?.value.trim();
+      const email = document.getElementById("reqEmail")?.value.trim();
       const targetRole = document.getElementById("reqTargetRole")?.value || "Software Developer";
       const targetCompany = document.getElementById("reqTargetCompany")?.value || "Google";
       const scope = document.getElementById("reqScope")?.value || "careers_only";
-      const reason = document.getElementById("reqReason")?.value;
+      const reason = document.getElementById("reqReason")?.value.trim();
 
       AuthService.submitRegistration({
         name,
@@ -215,7 +221,16 @@ class EngineeringWorkspace {
         requestedScope: scope,
         goals: reason
       });
-      alert(`Registration Submitted!\n\nThank you, ${name}. Your request has been queued for Harishraja's approval. You will receive access once approved.`);
+
+      StorageManager.logPeerActivity(`New candidate registration submitted by ${name} (${targetRole})`, "Registration");
+
+      const successNotice = document.getElementById("authSuccessNotice");
+      const successText = document.getElementById("authSuccessNoticeText");
+      if (successNotice && successText) {
+        successText.textContent = `Thank you, ${name}! Your registration for ${targetRole} (${scope}) has been queued for Harishraja's approval.`;
+        successNotice.style.display = "block";
+      }
+
       reqModal?.classList.remove("open");
       document.getElementById("requestAccessForm")?.reset();
     });
