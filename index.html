@@ -27,47 +27,71 @@
         </button>
       </form>
 
-      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary);">
-        <span>Need access? </span>
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); text-align: center;">
+        <span>New candidate or peer? </span>
         <button type="button" id="openRequestAccessBtn" class="btn btn-outline btn-sm" style="margin-left: 6px;">
-          Request Access
+          Register for Access
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Request Access Modal -->
+  <!-- Registration & Access Request Modal -->
   <div class="modal-overlay" id="requestAccessModal">
-    <div class="modal-card" style="max-width: 440px;">
+    <div class="modal-card" style="max-width: 480px;">
       <div class="modal-header">
-        <div class="modal-title">Request Workspace Access</div>
+        <div>
+          <div class="modal-title">Register for Workspace Access</div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Submit details to request scoped preparation permissions from Harishraja.</div>
+        </div>
         <button class="modal-close" id="closeRequestAccessBtn">&times;</button>
       </div>
       <form id="requestAccessForm">
         <div class="form-group">
-          <label class="form-label" for="reqName">Full Name</label>
+          <label class="form-label" for="reqName">Full Name / Username</label>
           <input type="text" id="reqName" class="form-control" placeholder="e.g. Alex Chen" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="reqEmail">Email Address</label>
           <input type="email" id="reqEmail" class="form-control" placeholder="name@example.com" required>
         </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label" for="reqTargetRole">Target Career Role</label>
+            <select id="reqTargetRole" class="select-input" style="width: 100%;">
+              <option value="Software Developer">Software Developer (SWE)</option>
+              <option value="AI Engineer">AI Engineer</option>
+              <option value="Machine Learning Engineer">ML Engineer (MLE)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reqTargetCompany">Target Company</label>
+            <select id="reqTargetCompany" class="select-input" style="width: 100%;">
+              <option value="Google">Google</option>
+              <option value="Amazon">Amazon</option>
+              <option value="Meta">Meta</option>
+              <option value="Microsoft">Microsoft</option>
+              <option value="Apple">Apple</option>
+              <option value="FAANG / Other">FAANG / Other</option>
+            </select>
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label" for="reqScope">What do you want to access?</label>
+          <label class="form-label" for="reqScope">Requested Preparation Access</label>
           <select id="reqScope" class="select-input" style="width: 100%;">
-            <option value="careers_only">Only Career Openings & Job Positions</option>
-            <option value="dsa_only">Only DSA Directory & Code Editor</option>
-            <option value="ai_only">Only AI Curriculum</option>
-            <option value="full">Full Workspace</option>
+            <option value="careers_only">Careers & FastPrep OA Only</option>
+            <option value="dsa_only">DSA Directory & Code Editor Only</option>
+            <option value="ai_only">AI Curriculum & Math Only</option>
+            <option value="full">Full Workspace Access</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="reqReason">Reason for Request</label>
-          <textarea id="reqReason" class="form-control" rows="3" placeholder="Brief note to Harishraja..." required></textarea>
+          <label class="form-label" for="reqReason">Preparation Goals & Note to Harishraja</label>
+          <textarea id="reqReason" class="form-control" rows="2" placeholder="Brief note on what you want to prepare..." required></textarea>
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
           <button type="button" class="btn btn-outline" id="cancelRequestAccessBtn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit Request</button>
+          <button type="submit" class="btn btn-primary">Submit Registration</button>
         </div>
       </form>
     </div>
@@ -221,6 +245,52 @@
             <button class="btn btn-outline" id="btnGoToFastprep">
               Explore FastPrep Online Assessment Bank &rarr;
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Peer Study Room & Live Activity Feed (Group Chat & Activity Tracking) -->
+      <div class="card" style="margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 500;">Peer Study Room & Live Activity Feed</h3>
+            <p style="color: var(--text-secondary); font-size: 13px;">Real-time study updates, peer check-ins, and activity logs across authorized workspace members.</p>
+          </div>
+          <span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">Study Network Live</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;" class="split-2col">
+          <!-- Column 1: Study Check-in & Message Board -->
+          <div style="display: flex; flex-direction: column; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 8px;">Share Study Check-In</div>
+            <form id="peerChatForm" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <select id="peerChatTagSelect" class="select-input" style="font-size: 12px; width: 140px; flex-shrink: 0;">
+                  <option value="DSA Practice">DSA Practice</option>
+                  <option value="Commute Study">Commute Study</option>
+                  <option value="AI Track">AI Track</option>
+                  <option value="FastPrep OA">FastPrep OA</option>
+                  <option value="Interview Strategy">Interview Strategy</option>
+                </select>
+                <input type="text" id="peerChatInput" class="form-control" placeholder="Share today's milestone or question..." required style="font-size: 12px; flex: 1; min-width: 140px;">
+              </div>
+              <div style="display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary btn-sm">Post Check-In</button>
+              </div>
+            </form>
+
+            <div style="font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px;">Member Check-Ins</div>
+            <div id="peerChatMessagesList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch;">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Column 2: Live Activity Stream -->
+          <div style="display: flex; flex-direction: column; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px;">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 8px;">Live Member Activities</div>
+            <div id="peerActivityStreamList" style="max-height: 290px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch;">
+              <!-- Rendered by JS -->
+            </div>
           </div>
         </div>
       </div>

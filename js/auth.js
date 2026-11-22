@@ -112,19 +112,61 @@ export class AuthService {
   }
 
   static submitAccessRequest(name, email, reason, requestedScope = "careers_only") {
+    return AuthService.submitRegistration({
+      name,
+      email,
+      targetRole: "Software Developer",
+      targetCompany: "Google",
+      requestedScope,
+      goals: reason
+    });
+  }
+
+  static submitRegistration({ name, email, targetRole, targetCompany, requestedScope, goals }) {
     const requests = AuthService.getAccessRequests();
     const newReq = {
       id: "req_" + Date.now(),
-      name: name.trim(),
-      email: email.trim(),
-      reason: reason.trim(),
-      requestedScope,
+      name: (name || "").trim(),
+      email: (email || "").trim(),
+      targetRole: targetRole || "Software Developer",
+      targetCompany: targetCompany || "Google",
+      requestedScope: requestedScope || "careers_only",
+      reason: (goals || "").trim(),
       timestamp: new Date().toLocaleString(),
-      status: "pending"
+      status: "pending",
+      approvedToken: null
     };
     requests.unshift(newReq);
     localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
     return newReq;
+  }
+
+  static approveRegistration(reqId) {
+    const requests = AuthService.getAccessRequests();
+    const target = requests.find((r) => r.id === reqId);
+    if (!target) return null;
+
+    // Generate scoped guest token for the applicant
+    const token = AuthService.generateGuestToken(target.name || "Peer", target.requestedScope || "full");
+    target.status = "approved";
+    target.approvedToken = token;
+    localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
+
+    return {
+      token,
+      name: target.name,
+      email: target.email,
+      scope: target.requestedScope
+    };
+  }
+
+  static rejectRegistration(reqId) {
+    const requests = AuthService.getAccessRequests();
+    const target = requests.find((r) => r.id === reqId);
+    if (target) {
+      target.status = "rejected";
+      localStorage.setItem(AUTH_KEYS.ACCESS_REQUESTS, JSON.stringify(requests));
+    }
   }
 
   static authenticate(key) {

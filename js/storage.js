@@ -150,6 +150,108 @@ export class StorageManager {
     return sessions;
   }
 
+  // Peer Study Activity & Messages
+  static getPeerActivities() {
+    try {
+      const data = localStorage.getItem("ascent_peer_activities_v1");
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: "act_1",
+        userName: "Harishraja (Owner)",
+        action: "Logged 45 min in College Commute mode (Google Mock Interview)",
+        tag: "Commute Study",
+        timestamp: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      },
+      {
+        id: "act_2",
+        userName: "Harishraja (Owner)",
+        action: "Solved Two Sum in Daily DSA Code Editor",
+        tag: "DSA Practice",
+        timestamp: new Date(Date.now() - 7200000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }
+    ];
+  }
+
+  static logPeerActivity(action, tag = "Study Update") {
+    const activities = StorageManager.getPeerActivities();
+    const userStr = localStorage.getItem("ascent_auth_session");
+    let userName = "Harishraja";
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        userName = u.role === "owner" ? "Harishraja (Owner)" : `Guest (${u.label || "Authorized"})`;
+      } catch {}
+    }
+    const newAct = {
+      id: "act_" + Date.now(),
+      userName,
+      action,
+      tag,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    activities.unshift(newAct);
+    if (activities.length > 50) activities.pop();
+    try {
+      localStorage.setItem("ascent_peer_activities_v1", JSON.stringify(activities));
+    } catch (e) {
+      console.error(e);
+    }
+    return activities;
+  }
+
+  static getPeerChatMessages() {
+    try {
+      const data = localStorage.getItem("ascent_peer_chat_v1");
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: "msg_1",
+        userName: "Harishraja",
+        role: "owner",
+        tag: "Study Focus",
+        message: "Welcome to the workspace! Today's focus is Google core algorithmic patterns and AI engineering foundations.",
+        timestamp: new Date(Date.now() - 7200000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }
+    ];
+  }
+
+  static postPeerChatMessage(message, tag = "Study Update") {
+    const msgs = StorageManager.getPeerChatMessages();
+    const userStr = localStorage.getItem("ascent_auth_session");
+    let userName = "Harishraja";
+    let role = "owner";
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        userName = u.label || "Peer";
+        role = u.role || "guest";
+      } catch {}
+    }
+    const newMsg = {
+      id: "msg_" + Date.now(),
+      userName,
+      role,
+      tag,
+      message: message.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    msgs.unshift(newMsg);
+    if (msgs.length > 50) msgs.pop();
+    try {
+      localStorage.setItem("ascent_peer_chat_v1", JSON.stringify(msgs));
+    } catch (e) {
+      console.error(e);
+    }
+    return msgs;
+  }
+
   // Settings
   static getSettings() {
     try {

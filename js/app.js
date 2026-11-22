@@ -202,11 +202,20 @@ class EngineeringWorkspace {
       e.preventDefault();
       const name = document.getElementById("reqName")?.value;
       const email = document.getElementById("reqEmail")?.value;
-      const scope = document.getElementById("reqScope")?.value;
+      const targetRole = document.getElementById("reqTargetRole")?.value || "Software Developer";
+      const targetCompany = document.getElementById("reqTargetCompany")?.value || "Google";
+      const scope = document.getElementById("reqScope")?.value || "careers_only";
       const reason = document.getElementById("reqReason")?.value;
 
-      AuthService.submitAccessRequest(name, email, reason, scope);
-      alert("Access request recorded. The administrator (Harishraja) has been notified in their Administration tab.");
+      AuthService.submitRegistration({
+        name,
+        email,
+        targetRole,
+        targetCompany,
+        requestedScope: scope,
+        goals: reason
+      });
+      alert(`Registration Submitted!\n\nThank you, ${name}. Your request has been queued for Harishraja's approval. You will receive access once approved.`);
       reqModal?.classList.remove("open");
       document.getElementById("requestAccessForm")?.reset();
     });
@@ -278,6 +287,18 @@ class EngineeringWorkspace {
   // --- OVERVIEW ---
   initOverview() {
     this.updateOverview();
+
+    document.getElementById("peerChatForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("peerChatInput");
+      const tag = document.getElementById("peerChatTagSelect")?.value || "Study Update";
+      const val = input?.value.trim();
+      if (!val) return;
+      StorageManager.postPeerChatMessage(val, tag);
+      StorageManager.logPeerActivity(`Posted update: "${val.slice(0, 35)}..."`, tag);
+      input.value = "";
+      this.renderPeerRoom();
+    });
   }
 
   updateOverview() {
@@ -309,6 +330,40 @@ class EngineeringWorkspace {
 
     const streakElem = document.getElementById("overviewStreak");
     if (streakElem) streakElem.textContent = `${analytics.streak} Day${analytics.streak === 1 ? "" : "s"}`;
+
+    this.renderPeerRoom();
+  }
+
+  renderPeerRoom() {
+    const chatContainer = document.getElementById("peerChatMessagesList");
+    const actContainer = document.getElementById("peerActivityStreamList");
+
+    if (chatContainer) {
+      const msgs = StorageManager.getPeerChatMessages();
+      chatContainer.innerHTML = msgs.map((m) => `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+            <span style="font-weight: 500; font-size: 12px; color: ${m.role === 'owner' ? 'var(--google-blue)' : 'var(--text-primary)'};">${m.userName}</span>
+            <span style="font-size: 10px; color: var(--text-muted);">${m.timestamp}</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-primary); margin-bottom: 4px;">${m.message}</div>
+          <span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); font-size: 10px; padding: 1px 6px;">${m.tag}</span>
+        </div>
+      `).join("");
+    }
+
+    if (actContainer) {
+      const acts = StorageManager.getPeerActivities();
+      actContainer.innerHTML = acts.map((a) => `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <div style="font-size: 12px;">
+            <span style="font-weight: 500;">${a.userName}:</span>
+            <span style="color: var(--text-secondary);">${a.action}</span>
+          </div>
+          <div style="font-size: 10px; color: var(--text-muted); white-space: nowrap;">${a.timestamp}</div>
+        </div>
+      `).join("");
+    }
   }
 
   // --- DAILY PLANNER & TIME ALLOCATOR ---
@@ -573,6 +628,11 @@ class EngineeringWorkspace {
 
     const userCode = textarea.value;
     const res = CodeRunner.runTests(this.currentDailyChallenge, this.currentDailyLanguage, userCode);
+
+    StorageManager.logPeerActivity(
+      `${res.success ? "Solved" : "Tested"} "${this.currentDailyChallenge.title}" (${res.passedCount}/${res.totalCount} passed)`,
+      "Daily DSA"
+    );
 
     resultsBox.style.display = "block";
 
@@ -1289,8 +1349,10 @@ class EngineeringWorkspace {
   }
 
   handleTimerComplete(completeData) {
-    alert(`Focus session complete: ${Math.round(completeData.durationSeconds / 60)} minutes logged for ${completeData.topic}.`);
+    const mins = Math.max(1, Math.round(completeData.durationSeconds / 60));
+    alert(`Focus session complete: ${mins} minutes logged for ${completeData.topic}.`);
     StorageManager.addSession(completeData);
+    StorageManager.logPeerActivity(`Completed ${mins}-min focus session (${completeData.topic})`, completeData.category || "Study Timer");
     this.updateTimerBtnState("idle");
     this.renderSessionHistory();
     this.updateOverview();
@@ -1579,30 +1641,105 @@ class EngineeringWorkspace {
       } else {
         reqContainer.innerHTML = `
           <div class="table-container" style="width: 100%; overflow-x: auto; margin-top: 8px;">
-            <table class="data-table" style="min-width: 500px; width: 100%;">
+            <table class="data-table" style="min-width: 580px; width: 100%;">
               <thead>
                 <tr>
                   <th>Applicant</th>
-                  <th>Email</th>
-                  <th>Requested Scope</th>
-                  <th>Reason</th>
-                  <th>Date</th>
+                  <th>Email & Target</th>
+                  <th>Permission Scope</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                ${reqs.map((r) => `
-                  <tr>
-                    <td style="font-weight: 500;">${r.name}</td>
-                    <td style="color: var(--text-secondary); word-break: break-all; max-width: 140px; font-size: 12px;">${r.email}</td>
-                    <td><span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">${r.requestedScope || "careers_only"}</span></td>
-                    <td style="font-size: 12px; word-break: break-word; max-width: 160px;">${r.reason}</td>
-                    <td style="color: var(--text-muted); font-size: 11px;">${r.timestamp}</td>
-                  </tr>
-                `).join("")}
+                ${reqs.map((r) => {
+                  let statusBadge = `<span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-secondary); border: 1px solid var(--border-color);">Pending</span>`;
+                  if (r.status === "approved") {
+                    statusBadge = `<span class="badge" style="background-color: var(--google-green-surface); color: var(--google-green); font-weight: 500;">Approved</span>`;
+                  } else if (r.status === "rejected") {
+                    statusBadge = `<span class="badge" style="background-color: var(--google-red-surface); color: var(--google-red);">Rejected</span>`;
+                  }
+
+                  let actionBtns = "";
+                  if (r.status === "pending") {
+                    actionBtns = `
+                      <button class="btn btn-primary btn-sm btn-approve-req" data-id="${r.id}">Approve</button>
+                      <button class="btn btn-outline btn-sm btn-reject-req" data-id="${r.id}">Reject</button>
+                    `;
+                  } else if (r.status === "approved" && r.approvedToken) {
+                    actionBtns = `
+                      <button class="btn btn-outline btn-sm btn-copy-req-link" data-token="${r.approvedToken}">Copy Link</button>
+                    `;
+                  } else {
+                    actionBtns = `<span style="font-size: 11px; color: var(--text-muted);">None</span>`;
+                  }
+
+                  return `
+                    <tr>
+                      <td>
+                        <div style="font-weight: 500;">${r.name}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${r.reason || ""}</div>
+                      </td>
+                      <td style="color: var(--text-secondary); font-size: 12px;">
+                        <div>${r.email}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${r.targetRole || "SWE"} &bull; ${r.targetCompany || "Google"}</div>
+                      </td>
+                      <td>
+                        <span class="badge" style="background-color: var(--bg-surface-hover); color: var(--text-primary); border: 1px solid var(--border-color);">${r.requestedScope || "careers_only"}</span>
+                      </td>
+                      <td>${statusBadge}</td>
+                      <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        ${actionBtns}
+                      </td>
+                    </tr>
+                  `;
+                }).join("")}
               </tbody>
             </table>
           </div>
         `;
+
+        reqContainer.querySelectorAll(".btn-approve-req").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const reqId = btn.getAttribute("data-id");
+            const res = AuthService.approveRegistration(reqId);
+            if (res) {
+              const origin = window.location.origin + window.location.pathname;
+              const magicLink = `${origin}?token=${res.token}`;
+              navigator.clipboard.writeText(magicLink);
+              alert(
+                `Access Approved for ${res.name}!\n\n` +
+                `Permission Scope: ${res.scope}\n` +
+                `Generated Token: ${res.token}\n` +
+                `Direct 1-Click Link: ${magicLink}\n\n` +
+                `The link has been copied to your clipboard. Send it to ${res.name}!`
+              );
+              this.renderAdminPanel();
+            }
+          });
+        });
+
+        reqContainer.querySelectorAll(".btn-reject-req").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const reqId = btn.getAttribute("data-id");
+            if (confirm("Reject this access request?")) {
+              AuthService.rejectRegistration(reqId);
+              this.renderAdminPanel();
+            }
+          });
+        });
+
+        reqContainer.querySelectorAll(".btn-copy-req-link").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const token = btn.getAttribute("data-token");
+            const origin = window.location.origin + window.location.pathname;
+            const magicLink = `${origin}?token=${token}`;
+            navigator.clipboard.writeText(magicLink).then(() => {
+              btn.textContent = "Copied!";
+              setTimeout(() => { btn.textContent = "Copy Link"; }, 2000);
+            });
+          });
+        });
       }
     }
   }
