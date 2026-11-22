@@ -1,7 +1,10 @@
-// Google Engineering Workspace - Application Controller
+// Google Engineering Workspace - Unified Application Controller
 
 import { DSA_TOPICS, DEFAULT_PROBLEM_STEPS } from "./data/dsaRoadmap.js";
 import { AI_MODULES, DEFAULT_AI_STEPS } from "./data/aiRoadmap.js";
+import { INITIAL_JOB_OPENINGS } from "./data/careerOpenings.js";
+import { FASTPREP_OA_QUESTIONS } from "./data/fastprepOA.js";
+import { DAILY_CHALLENGES, CodeRunner } from "./codeRunner.js";
 import { StorageManager } from "./storage.js";
 import { StudyTimer } from "./timer.js";
 import { NewsService } from "./newsService.js";
@@ -70,6 +73,8 @@ class EngineeringWorkspace {
     this.currentDsaProblem = null;
     this.currentAiTopic = null;
     this.selectedPlannerMinutes = 120;
+    this.currentDailyChallenge = CodeRunner.getTodayChallenge();
+    this.currentDailyLanguage = "javascript";
 
     this.timer = new StudyTimer(
       (tickData) => this.handleTimerTick(tickData),
@@ -82,6 +87,9 @@ class EngineeringWorkspace {
     this.initOverview();
     this.initDailyPlannerUI();
     this.initContestHub();
+    this.initDailyDsaEditor();
+    this.initCareersPortal();
+    this.initFastprepArchive();
     this.initProblemSolvingGuidanceChecklist();
     this.initDsaDirectory();
     this.initAiCurriculum();
@@ -180,6 +188,10 @@ class EngineeringWorkspace {
     });
 
     document.getElementById("btnGoToGuide")?.addEventListener("click", () => this.switchTab("guide"));
+    document.getElementById("btnGoToDailyDsa")?.addEventListener("click", () => this.switchTab("daily-dsa"));
+    document.getElementById("btnGoToCareers")?.addEventListener("click", () => this.switchTab("careers"));
+    document.getElementById("btnGoToFastprep")?.addEventListener("click", () => this.switchTab("fastprep"));
+
     document.getElementById("overviewStartPomodoro")?.addEventListener("click", () => {
       this.switchTab("timer");
       this.setTimerMode("pomodoro");
@@ -201,6 +213,9 @@ class EngineeringWorkspace {
     });
 
     if (tabId === "overview") this.updateOverview();
+    if (tabId === "daily-dsa") this.renderDailyDsaChallenge();
+    if (tabId === "careers") this.renderJobOpenings();
+    if (tabId === "fastprep") this.renderFastprepQuestions();
     if (tabId === "dsa") this.renderDsaTable();
     if (tabId === "ai") this.renderAiTable();
     if (tabId === "timer") this.renderSessionHistory();
@@ -265,7 +280,6 @@ class EngineeringWorkspace {
       this.renderDailyPlan(plan);
     });
 
-    // Check if a plan exists for today
     const existingPlan = DailyPlanner.getTodayPlan();
     if (existingPlan) {
       this.renderDailyPlan(existingPlan);
@@ -303,7 +317,6 @@ class EngineeringWorkspace {
       </div>
     `).join("");
 
-    // Checkbox toggles
     container.querySelectorAll(".planner-task-check").forEach((cb) => {
       cb.addEventListener("change", (e) => {
         const idx = parseInt(cb.getAttribute("data-idx"), 10);
@@ -313,7 +326,6 @@ class EngineeringWorkspace {
       });
     });
 
-    // Start timer buttons
     container.querySelectorAll(".btn-start-planner-timer").forEach((btn) => {
       btn.addEventListener("click", () => {
         const title = decodeURIComponent(btn.getAttribute("data-title"));
@@ -328,7 +340,7 @@ class EngineeringWorkspace {
     });
   }
 
-  // --- CONTEST HUB (CODEFORCES & LEETCODE) ---
+  // --- CONTEST HUB ---
   async initContestHub() {
     const container = document.getElementById("contestListContainer");
     if (!container) return;
@@ -379,7 +391,6 @@ class EngineeringWorkspace {
         `;
       }).join("");
 
-      // Trigger notification if next contest is within 1 hour
       const nextContest = contests[0];
       if (nextContest && nextContest.startTime - Date.now() < 60 * 60 * 1000 && nextContest.startTime - Date.now() > 0) {
         ContestService.sendNotification(
@@ -390,6 +401,274 @@ class EngineeringWorkspace {
     } catch {
       container.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">Unable to load live contests. Check internet connectivity.</div>`;
     }
+  }
+
+  // --- DAILY DSA CODE TEXT EDITOR & VERIFICATION ---
+  initDailyDsaEditor() {
+    const challengeSelect = document.getElementById("dailyDsaChallengeSelect");
+    if (challengeSelect) {
+      challengeSelect.innerHTML = DAILY_CHALLENGES.map((c) => `
+        <option value="${c.id}">${c.title} (${c.difficulty})</option>
+      `).join("");
+
+      challengeSelect.addEventListener("change", (e) => {
+        const id = e.target.value;
+        const found = DAILY_CHALLENGES.find((c) => c.id === id);
+        if (found) {
+          this.currentDailyChallenge = found;
+          this.renderDailyDsaChallenge();
+        }
+      });
+    }
+
+    const langSelect = document.getElementById("codeEditorLanguage");
+    langSelect?.addEventListener("change", (e) => {
+      this.currentDailyLanguage = e.target.value;
+      this.resetDailyStarterCode();
+    });
+
+    const textarea = document.getElementById("codeEditorTextarea");
+    // Handle Tab key in code editor
+    textarea?.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + "    " + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 4;
+      }
+    });
+
+    document.getElementById("btnResetCode")?.addEventListener("click", () => {
+      if (confirm("Reset code editor to starter template?")) {
+        this.resetDailyStarterCode();
+      }
+    });
+
+    document.getElementById("btnRunCode")?.addEventListener("click", () => {
+      this.runDailyDsaVerification();
+    });
+
+    this.renderDailyDsaChallenge();
+  }
+
+  renderDailyDsaChallenge() {
+    const c = this.currentDailyChallenge;
+    if (!c) return;
+
+    document.getElementById("dailyDsaHeading").textContent = `Today's DSA Problem: ${c.title}`;
+    document.getElementById("dailyDsaDifficulty").textContent = c.difficulty;
+    document.getElementById("dailyDsaDifficulty").className = `badge ${c.difficulty === "Easy" ? "badge-easy" : c.difficulty === "Medium" ? "badge-medium" : "badge-hard"}`;
+    document.getElementById("dailyDsaCategory").textContent = c.category;
+    document.getElementById("dailyDsaCompany").textContent = c.company;
+    document.getElementById("dailyDsaDescription").textContent = c.description;
+    document.getElementById("dailyDsaConstraints").textContent = c.constraints;
+
+    this.resetDailyStarterCode();
+  }
+
+  resetDailyStarterCode() {
+    const c = this.currentDailyChallenge;
+    const lang = this.currentDailyLanguage;
+    const textarea = document.getElementById("codeEditorTextarea");
+    if (textarea && c && c.starterCode) {
+      textarea.value = c.starterCode[lang] || c.starterCode["javascript"];
+    }
+    const resultsBox = document.getElementById("codeResultsBox");
+    if (resultsBox) resultsBox.style.display = "none";
+  }
+
+  runDailyDsaVerification() {
+    const textarea = document.getElementById("codeEditorTextarea");
+    const resultsBox = document.getElementById("codeResultsBox");
+    const summary = document.getElementById("codeResultsSummary");
+    const details = document.getElementById("codeResultsDetails");
+
+    if (!textarea || !resultsBox || !summary || !details) return;
+
+    const userCode = textarea.value;
+    const res = CodeRunner.runTests(this.currentDailyChallenge, this.currentDailyLanguage, userCode);
+
+    resultsBox.style.display = "block";
+
+    if (res.error) {
+      summary.style.color = "var(--google-red)";
+      summary.textContent = "Evaluation Error";
+      details.innerHTML = `<div style="color: var(--google-red);">${res.error}</div>`;
+      return;
+    }
+
+    if (res.success) {
+      summary.style.color = "var(--google-green)";
+      summary.textContent = `ACCEPTED: ${res.passedCount} / ${res.totalCount} Test Cases Passed!`;
+
+      // Save to solved problems
+      const problems = StorageManager.getDSAProblems();
+      const match = problems.find((p) => p.title.toLowerCase() === this.currentDailyChallenge.title.toLowerCase());
+      if (match) {
+        match.status = "mastered";
+        match.notes = `Solved in code editor (${this.currentDailyLanguage}):\n\n` + userCode;
+        match.solvedAt = Date.now();
+        StorageManager.saveDSAProblems(problems);
+        this.updateOverview();
+      }
+    } else {
+      summary.style.color = "var(--google-red)";
+      summary.textContent = `FAILED: ${res.passedCount} / ${res.totalCount} Test Cases Passed`;
+    }
+
+    details.innerHTML = res.results.map((r) => `
+      <div style="padding: 8px 0; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <span style="font-weight: 700; color: ${r.passed ? "var(--google-green)" : "var(--google-red)"};">
+            Test Case ${r.testCaseIndex}: ${r.passed ? "PASSED" : "FAILED"}
+          </span>
+          <div style="color: var(--text-secondary); margin-top: 2px;">Input: <code>${r.input}</code></div>
+          <div style="color: var(--text-secondary);">Expected: <code>${r.expected}</code></div>
+          <div style="color: var(--text-primary);">Your Output: <code>${r.actual}</code></div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted);">${r.runtimeMs} ms</div>
+      </div>
+    `).join("");
+  }
+
+  // --- FAANG & GOOGLE JOB OPENINGS ---
+  initCareersPortal() {
+    document.getElementById("jobsSearchInput")?.addEventListener("input", () => this.renderJobOpenings());
+    document.getElementById("jobsCompanyFilter")?.addEventListener("change", () => this.renderJobOpenings());
+    document.getElementById("jobsRoleFilter")?.addEventListener("change", () => this.renderJobOpenings());
+    document.getElementById("jobsLocationFilter")?.addEventListener("change", () => this.renderJobOpenings());
+
+    this.renderJobOpenings();
+  }
+
+  renderJobOpenings() {
+    const container = document.getElementById("jobsGridContainer");
+    const countElem = document.getElementById("totalJobsCount");
+    if (!container) return;
+
+    const query = (document.getElementById("jobsSearchInput")?.value || "").toLowerCase().trim();
+    const companyFilter = document.getElementById("jobsCompanyFilter")?.value || "all";
+    const roleFilter = document.getElementById("jobsRoleFilter")?.value || "all";
+    const locationFilter = document.getElementById("jobsLocationFilter")?.value || "all";
+
+    const filtered = INITIAL_JOB_OPENINGS.filter((j) => {
+      if (companyFilter === "google_only" && !j.isGoogle) return false;
+      if (companyFilter !== "all" && companyFilter !== "google_only" && j.company !== companyFilter) return false;
+      if (roleFilter !== "all" && j.roleCategory !== roleFilter) return false;
+      if (locationFilter === "India" && j.region !== "India") return false;
+      if (locationFilter === "Global" && j.region !== "Global") return false;
+
+      if (query) {
+        const matchTitle = j.title.toLowerCase().includes(query);
+        const matchComp = j.company.toLowerCase().includes(query);
+        const matchLoc = j.location.toLowerCase().includes(query);
+        const matchDesc = j.description.toLowerCase().includes(query);
+        if (!matchTitle && !matchComp && !matchLoc && !matchDesc) return false;
+      }
+      return true;
+    });
+
+    if (countElem) countElem.textContent = filtered.length;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 32px;">No matching job openings found for selected criteria.</div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map((job) => `
+      <div class="job-card ${job.isGoogle ? "google-job" : ""}">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <span class="job-company">${job.company} • ${job.team}</span>
+            <span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue);">${job.roleCategory}</span>
+          </div>
+
+          <h3 class="job-title">${job.title}</h3>
+
+          <div class="job-meta">
+            <span>📍 ${job.location}</span>
+            <span>💼 ${job.experienceLevel}</span>
+          </div>
+
+          ${job.applyPriority ? `
+            <div style="margin-bottom: 10px;">
+              <span class="badge" style="background-color: var(--google-green-surface); color: var(--google-green); font-weight: 600;">
+                ✓ ${job.applyPriority}
+              </span>
+            </div>
+          ` : ""}
+
+          <p class="job-desc">${job.description}</p>
+
+          <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; background-color: var(--bg-surface-hover); padding: 8px 12px; border-radius: var(--radius-sm);">
+            <strong>Requirements:</strong> ${job.qualifications}
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+          <span style="font-size: 11px; color: var(--text-muted);">${job.sourcePortal}</span>
+          <a href="${job.applyUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            Apply on Official Site &rarr;
+          </a>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // --- FASTPREP OA ARCHIVE ---
+  initFastprepArchive() {
+    document.getElementById("fastprepCompanyFilter")?.addEventListener("change", () => this.renderFastprepQuestions());
+    this.renderFastprepQuestions();
+  }
+
+  renderFastprepQuestions() {
+    const container = document.getElementById("fastprepContainer");
+    if (!container) return;
+
+    const companyFilter = document.getElementById("fastprepCompanyFilter")?.value || "all";
+    const filtered = FASTPREP_OA_QUESTIONS.filter((q) => {
+      if (companyFilter !== "all" && q.company !== companyFilter) return false;
+      return true;
+    });
+
+    container.innerHTML = filtered.map((oa) => `
+      <div class="oa-card">
+        <div class="oa-card-header">
+          <div>
+            <span class="badge" style="background-color: var(--google-blue-surface); color: var(--google-blue); font-weight: 700;">${oa.company} OA</span>
+            <span class="badge" style="background-color: var(--bg-surface-hover); margin-left: 6px;">${oa.round}</span>
+            <span class="badge badge-${oa.difficulty.includes("Hard") ? "hard" : "medium"}" style="margin-left: 6px;">${oa.difficulty}</span>
+          </div>
+          <span style="font-size: 12px; font-weight: 600; color: var(--google-green);">${oa.frequency}</span>
+        </div>
+
+        <h3 style="font-size: 17px; font-weight: 500; margin-bottom: 8px;">${oa.title}</h3>
+        <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">${oa.description}</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; font-size: 12.5px;">
+          <div>
+            <strong style="color: var(--google-blue);">Optimal Pattern:</strong>
+            <div style="color: var(--text-primary); margin-top: 2px;">${oa.pattern}</div>
+          </div>
+          <div>
+            <strong style="color: var(--text-secondary);">Complexities:</strong>
+            <div style="color: var(--text-primary); margin-top: 2px;">Time: <code>${oa.timeComp}</code> | Space: <code>${oa.spaceComp}</code></div>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+          <strong>Approach:</strong> ${oa.approach}
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px;">
+          <span style="color: var(--text-muted);">Sample: <code>${oa.sampleInput}</code> &rarr; <strong>${oa.expectedOutput}</strong></span>
+          <a href="${oa.leetcodeUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
+            Practice Equivalent on LeetCode &rarr;
+          </a>
+        </div>
+      </div>
+    `).join("");
   }
 
   // --- PROBLEM SOLVING GUIDANCE CHECKLIST (ACTIONABLE TO-DO LIST) ---
@@ -751,7 +1030,6 @@ class EngineeringWorkspace {
     document.getElementById("modalAiConcepts").textContent = topic.keyConcepts || "Foundational concepts.";
     document.getElementById("modalAiExercise").textContent = topic.practicalExercise || "Implementation details.";
 
-    // Hourly Schedule Breakdown List
     const scheduleContainer = document.getElementById("modalAiHourlyScheduleList");
     if (scheduleContainer && topic.hourlySchedule) {
       scheduleContainer.innerHTML = topic.hourlySchedule.map((s) => `

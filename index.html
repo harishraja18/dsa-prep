@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Engineering Preparation Workspace | Google DSA & AI</title>
-  <meta name="description" content="Professional Google & FAANG interview preparation platform with cognitive problem-solving checklist, daily time allocator, DSA directory, AI curriculum, and contest tracking.">
+  <meta name="description" content="Professional Google & FAANG interview preparation platform with daily DSA code editor, live FAANG job openings for India and global, FastPrep OA archive, and cognitive problem-solving checklists.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -94,6 +94,9 @@
   <!-- Navigation Bar -->
   <nav class="app-nav">
     <button class="nav-tab-btn active" data-tab="overview">Overview</button>
+    <button class="nav-tab-btn" data-tab="daily-dsa">Daily DSA Editor</button>
+    <button class="nav-tab-btn" data-tab="careers">FAANG Careers & Openings</button>
+    <button class="nav-tab-btn" data-tab="fastprep">FastPrep OA Archive</button>
     <button class="nav-tab-btn" data-tab="guide">Problem-Solving Checklist</button>
     <button class="nav-tab-btn" data-tab="dsa">DSA Directory</button>
     <button class="nav-tab-btn" data-tab="ai">AI Curriculum</button>
@@ -164,7 +167,7 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
           <span style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Primary Focus Area:</span>
           <select id="plannerFocusSelect" class="select-input">
             <option value="balanced">Balanced (DSA + AI Systems)</option>
@@ -180,12 +183,12 @@
         </div>
       </div>
 
-      <!-- Contest Tracking & Overview Split -->
+      <!-- Quick Action Cards Grid -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <!-- Codeforces & LeetCode Contest Hub -->
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="font-size: 15px; font-weight: 500;">Upcoming Contests & Alerts (Codeforces & LeetCode)</h3>
+            <h3 style="font-size: 15px; font-weight: 500;">Upcoming Contests (Codeforces & LeetCode)</h3>
             <button class="btn btn-outline btn-sm" id="btnEnableNotifications">Enable Alerts</button>
           </div>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
@@ -196,28 +199,160 @@
           </div>
         </div>
 
-        <!-- Quick Focus Sessions -->
+        <!-- Daily DSA Challenge & Job Direct Links -->
         <div class="card">
-          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Immediate Practice Blocks</h3>
+          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Direct Navigation</h3>
           <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
-            Launch a structured deliberate practice block directly into the Study Tracker.
+            Jump straight into coding today's challenge or explore current FAANG openings.
           </p>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="btn btn-primary" id="overviewStartPomodoro">
-              Start 25-Minute Focus Block
+            <button class="btn btn-primary" id="btnGoToDailyDsa">
+              Open Daily DSA Code Editor &rarr;
             </button>
-            <button class="btn btn-outline" id="overviewStartInterview">
-              Start 45-Minute Google Mock Interview
+            <button class="btn btn-outline" id="btnGoToCareers">
+              View Google & FAANG Job Openings &rarr;
             </button>
-            <button class="btn btn-outline" id="btnGoToGuide">
-              Open 10-Step Problem-Solving Checklist
+            <button class="btn btn-outline" id="btnGoToFastprep">
+              Explore FastPrep Online Assessment Bank &rarr;
             </button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: PROBLEM-SOLVING CHECKLIST (ACTIONABLE TO-DO LIST) -->
+    <!-- TAB 2: DAILY DSA CHALLENGE WITH IN-BROWSER CODE TEXT EDITOR -->
+    <section class="tab-pane" id="tab-daily-dsa">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 4px;" id="dailyDsaHeading">Today's DSA Problem: Two Sum</h1>
+          <p style="color: var(--text-secondary); font-size: 13px;">Type your solution in the code editor below, submit it, and verify against test cases in real time.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <select id="dailyDsaChallengeSelect" class="select-input">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Problem Statement Card -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="badge badge-easy" id="dailyDsaDifficulty">Easy</span>
+            <span class="badge" id="dailyDsaCategory" style="background-color: var(--bg-surface-hover);">Arrays & Hashing</span>
+            <span class="badge" id="dailyDsaCompany" style="background-color: var(--google-blue-surface); color: var(--google-blue);">Google High-Frequency</span>
+          </div>
+        </div>
+        <div id="dailyDsaDescription" style="font-size: 13.5px; line-height: 1.6; color: var(--text-primary); white-space: pre-line; margin-bottom: 12px;"></div>
+        <div style="background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Constraints:</span>
+          <pre id="dailyDsaConstraints" style="font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); margin-top: 4px; white-space: pre-wrap;"></pre>
+        </div>
+      </div>
+
+      <!-- In-Browser Code Text Editor -->
+      <div class="code-editor-wrapper">
+        <div class="code-editor-header">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary);">Language:</span>
+            <select id="codeEditorLanguage" class="select-input" style="padding: 4px 8px; font-size: 12px;">
+              <option value="javascript">JavaScript (Live In-Browser Execution)</option>
+              <option value="python">Python 3 (Simulation Engine)</option>
+              <option value="cpp">C++ (Simulation Engine)</option>
+              <option value="java">Java (Simulation Engine)</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline btn-sm" id="btnResetCode">Reset Starter Code</button>
+            <button class="btn btn-primary btn-sm" id="btnRunCode">Run & Submit Solution</button>
+          </div>
+        </div>
+
+        <textarea id="codeEditorTextarea" class="code-textarea" spellcheck="false" placeholder="Write your solution here..."></textarea>
+
+        <!-- Test Case Results Box -->
+        <div id="codeResultsBox" class="code-results-box" style="display: none;">
+          <div id="codeResultsSummary" style="font-weight: 700; margin-bottom: 8px;"></div>
+          <div id="codeResultsDetails"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: FAANG & GOOGLE JOB OPENINGS (INDIA & GLOBAL) -->
+    <section class="tab-pane" id="tab-careers">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 4px;">Google & FAANG Openings (India & Global)</h1>
+          <p style="color: var(--text-secondary); font-size: 13px;">Curated active job openings for AI Engineers, ML Engineers, and Software Developers with direct application links.</p>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          Total Positions Tracked: <strong id="totalJobsCount" style="color: var(--text-primary);">0</strong>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <input type="text" id="jobsSearchInput" class="search-input" placeholder="Search by role title, company, or tech stack...">
+        
+        <select id="jobsCompanyFilter" class="select-input">
+          <option value="all">All Tech Companies</option>
+          <option value="google_only">Google Exclusive Roles</option>
+          <option value="Google">Google</option>
+          <option value="Microsoft">Microsoft</option>
+          <option value="Amazon">Amazon</option>
+          <option value="Meta">Meta</option>
+          <option value="Apple">Apple</option>
+          <option value="NVIDIA">NVIDIA</option>
+          <option value="Uber">Uber</option>
+        </select>
+
+        <select id="jobsRoleFilter" class="select-input">
+          <option value="all">All Target Roles</option>
+          <option value="AI Engineer">AI Engineer</option>
+          <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+          <option value="Software Developer">Software Developer</option>
+        </select>
+
+        <select id="jobsLocationFilter" class="select-input">
+          <option value="all">All Locations</option>
+          <option value="India">India (Bengaluru, Hyderabad, Gurugram, Pune)</option>
+          <option value="Global">Global / Remote</option>
+        </select>
+      </div>
+
+      <!-- Jobs Grid -->
+      <div class="jobs-grid" id="jobsGridContainer">
+        <!-- Injected via JavaScript -->
+      </div>
+    </section>
+
+    <!-- TAB 4: FASTPREP OA QUESTION ARCHIVE -->
+    <section class="tab-pane" id="tab-fastprep">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 4px;">FastPrep Online Assessment (OA) Question Bank</h1>
+          <p style="color: var(--text-secondary); font-size: 13px;">Recent real Online Assessment and technical screening questions from Google, Amazon, Microsoft, and Meta.</p>
+        </div>
+      </div>
+
+      <!-- FastPrep Filters -->
+      <div class="filter-bar">
+        <select id="fastprepCompanyFilter" class="select-input">
+          <option value="all">All OA Companies</option>
+          <option value="Google">Google OA</option>
+          <option value="Amazon">Amazon OA</option>
+          <option value="Microsoft">Microsoft OA</option>
+          <option value="Meta">Meta Screening</option>
+        </select>
+      </div>
+
+      <!-- FastPrep Questions Container -->
+      <div id="fastprepContainer">
+        <!-- Injected via JavaScript -->
+      </div>
+    </section>
+
+    <!-- TAB 5: PROBLEM-SOLVING CHECKLIST (ACTIONABLE TO-DO LIST) -->
     <section class="tab-pane" id="tab-guide">
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
@@ -235,7 +370,7 @@
       </div>
     </section>
 
-    <!-- TAB 3: DSA DIRECTORY -->
+    <!-- TAB 6: DSA DIRECTORY -->
     <section class="tab-pane" id="tab-dsa">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
@@ -287,7 +422,7 @@
       </div>
     </section>
 
-    <!-- TAB 4: AI CURRICULUM -->
+    <!-- TAB 7: AI CURRICULUM -->
     <section class="tab-pane" id="tab-ai">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
@@ -329,7 +464,7 @@
       </div>
     </section>
 
-    <!-- TAB 5: STUDY TRACKER -->
+    <!-- TAB 8: STUDY TRACKER -->
     <section class="tab-pane" id="tab-timer">
       <div class="card" style="text-align: center; max-width: 680px; margin: 0 auto 24px auto; padding: 32px 24px;">
         <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
@@ -366,7 +501,7 @@
       </div>
     </section>
 
-    <!-- TAB 6: INDUSTRY NEWS -->
+    <!-- TAB 9: INDUSTRY NEWS -->
     <section class="tab-pane" id="tab-news">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <div>
@@ -390,7 +525,7 @@
       </div>
     </section>
 
-    <!-- TAB 7: ADMINISTRATION & SECURITY -->
+    <!-- TAB 10: ADMINISTRATION & SECURITY -->
     <section class="tab-pane" id="tab-admin">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
@@ -547,7 +682,6 @@
         <div id="modalAiExercise" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;"></div>
       </div>
 
-      <!-- Hourly Schedule Breakdown Card -->
       <div style="margin-bottom: 16px;">
         <span class="form-label">Suggested Hourly Study Breakdown</span>
         <div id="modalAiHourlyScheduleList" style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; background: var(--bg-surface);">
