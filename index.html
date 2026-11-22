@@ -1,272 +1,350 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASCENT | Google & FAANG DSA & AI Mastery Platform</title>
-  <meta name="description" content="Structured FAANG & Google problem-solving framework, DSA roadmaps, AI engineer curriculum, professional study hours tracker, and daily Google AI news.">
+  <title>Engineering Preparation Workspace | Google DSA & AI</title>
+  <meta name="description" content="Professional Google & FAANG interview preparation platform with cognitive problem-solving framework, DSA roadmaps, AI curriculum, and deep work tracker.">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
 </head>
 <body>
+
+  <!-- Access Control Login Wall -->
+  <div class="auth-wall" id="authWall">
+    <div class="auth-card">
+      <div class="auth-logo-text">Google Engineering Prep</div>
+      <p class="auth-subtitle">Restricted Access • Personal Workspace</p>
+
+      <form id="authLoginForm" style="text-align: left;">
+        <div class="form-group">
+          <label class="form-label" for="authPasskeyInput">Passkey or Authorized Token</label>
+          <input type="password" id="authPasskeyInput" class="form-control" placeholder="Enter access passkey..." required autocomplete="current-password">
+          <div id="authErrorMessage" style="color: var(--google-red); font-size: 12px; margin-top: 6px; display: none;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+          Authenticate
+        </button>
+      </form>
+
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary);">
+        <span>Need access? </span>
+        <button type="button" id="openRequestAccessBtn" class="btn btn-outline btn-sm" style="margin-left: 6px;">
+          Request Access
+        </button>
+      </div>
+
+      <div style="margin-top: 16px; font-size: 11px; color: var(--text-muted);">
+        Default Owner Passkey: <code>google2026</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Access Modal -->
+  <div class="modal-overlay" id="requestAccessModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div class="modal-title">Request Workspace Access</div>
+        <button class="modal-close" id="closeRequestAccessBtn">&times;</button>
+      </div>
+      <form id="requestAccessForm">
+        <div class="form-group">
+          <label class="form-label" for="reqName">Full Name</label>
+          <input type="text" id="reqName" class="form-control" placeholder="e.g. Alex Chen" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reqEmail">Email Address</label>
+          <input type="email" id="reqEmail" class="form-control" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reqReason">Reason for Request</label>
+          <textarea id="reqReason" class="form-control" rows="3" placeholder="Brief note to Harishraja..." required></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn btn-outline" id="cancelRequestAccessBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- App Header -->
   <header class="app-header">
     <div class="brand-wrapper">
-      <div class="brand-logo">
-        <span>ASCENT</span>
-        <span class="brand-dots">
-          <span class="dot dot-blue"></span>
-          <span class="dot dot-red"></span>
-          <span class="dot dot-yellow"></span>
-          <span class="dot dot-green"></span>
-        </span>
-      </div>
-      <span class="brand-badge">Target: Google SWE / AI</span>
+      <span class="brand-logo-text">Google Engineering Workspace</span>
+      <span class="brand-badge">SWE & AI Candidate</span>
     </div>
 
     <div class="header-actions">
-      <!-- Quick Header Timer Indicator -->
-      <div class="header-quick-timer" id="headerQuickTimer" title="Click to view Deep Work Timer">
-        <span class="timer-pulse" id="headerTimerPulse"></span>
-        <span id="headerTimerDisplay">00:00</span>
-        <span id="headerTimerLabel" style="color: var(--text-muted); font-size: 0.75rem;">(Idle)</span>
+      <div class="user-status-pill">
+        <span class="user-status-dot"></span>
+        <span id="headerUserLabel">Harishraja (Authenticated)</span>
       </div>
 
-      <!-- Theme Switcher -->
-      <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Dark/Light Mode">
-        <span id="themeIcon">☀️</span>
+      <button class="btn btn-outline btn-sm" id="themeToggleBtn" title="Toggle theme">
+        Theme
+      </button>
+
+      <button class="btn btn-outline btn-sm" id="headerLogoutBtn" title="Lock workspace">
+        Sign Out
       </button>
     </div>
   </header>
 
   <!-- Navigation Bar -->
   <nav class="app-nav">
-    <button class="nav-tab-btn active" data-tab="dashboard">
-      <span>🚀</span> Dashboard
-    </button>
-    <button class="nav-tab-btn" data-tab="dsa">
-      <span>🧩</span> DSA Problem Tracker
-    </button>
-    <button class="nav-tab-btn" data-tab="ai">
-      <span>🤖</span> AI Engineering Roadmap
-    </button>
-    <button class="nav-tab-btn" data-tab="timer">
-      <span>⏱️</span> Study Hours Tracker
-    </button>
-    <button class="nav-tab-btn" data-tab="news">
-      <span>📰</span> Daily Google & AI News
-    </button>
-    <button class="nav-tab-btn" data-tab="settings">
-      <span>⚙️</span> Settings & Backup
-    </button>
+    <button class="nav-tab-btn active" data-tab="overview">Overview</button>
+    <button class="nav-tab-btn" data-tab="guide">Problem-Solving Guide</button>
+    <button class="nav-tab-btn" data-tab="dsa">DSA Directory</button>
+    <button class="nav-tab-btn" data-tab="ai">AI Curriculum</button>
+    <button class="nav-tab-btn" data-tab="timer">Study Tracker</button>
+    <button class="nav-tab-btn" data-tab="news">Industry News</button>
+    <button class="nav-tab-btn" data-tab="admin">Administration & Security</button>
   </nav>
 
-  <!-- Main Content Area -->
+  <!-- Main Content -->
   <main class="main-content">
 
-    <!-- TAB 1: DASHBOARD -->
-    <section class="tab-pane active" id="tab-dashboard">
-      <div class="dashboard-metrics-grid">
-        <!-- Google Readiness Score -->
-        <div class="metric-card accent-blue">
-          <div class="metric-card-header">
-            <span>Google Ready Index</span>
-            <span>🎯</span>
-          </div>
-          <div class="metric-value" id="dashReadinessScore">0%</div>
-          <div class="metric-subtext" id="dashReadinessLevel">Target: L4/L5 SWE & AI Engineer</div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill fill-blue" id="dashReadinessBar" style="width: 0%;"></div>
+    <!-- TAB 1: OVERVIEW -->
+    <section class="tab-pane active" id="tab-overview">
+      <div class="metrics-row">
+        <div class="card">
+          <div class="card-title">Readiness Index</div>
+          <div class="card-value" id="overviewReadiness">0%</div>
+          <div class="card-subtitle" id="overviewReadinessLevel">Target: Google L4 / L5 SWE & AI</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="overviewReadinessBar" style="width: 0%;"></div>
           </div>
         </div>
 
-        <!-- Total Hours Logged -->
-        <div class="metric-card accent-green">
-          <div class="metric-card-header">
-            <span>Study Hours Logged</span>
-            <span>⏱️</span>
-          </div>
-          <div class="metric-value" id="dashTotalHours">0.0h</div>
-          <div class="metric-subtext">Today: <span id="dashTodayHours">0.0h</span> / 4.0h Target</div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill fill-green" id="dashTodayBar" style="width: 0%;"></div>
+        <div class="card">
+          <div class="card-title">Study Hours Logged</div>
+          <div class="card-value" id="overviewTotalHours">0.0h</div>
+          <div class="card-subtitle">Today: <span id="overviewTodayHours">0.0h</span> / 4.0h target</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="overviewTodayBar" style="width: 0%;"></div>
           </div>
         </div>
 
-        <!-- DSA Problems Mastered -->
-        <div class="metric-card accent-yellow">
-          <div class="metric-card-header">
-            <span>DSA Problems Solved</span>
-            <span>🧩</span>
-          </div>
-          <div class="metric-value" id="dashDsaMastered">0 / 0</div>
-          <div class="metric-subtext"><span id="dashDsaPercent">0%</span> of High-Freq Curated Problems</div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill fill-yellow" id="dashDsaBar" style="width: 0%;"></div>
+        <div class="card">
+          <div class="card-title">DSA Problems Mastered</div>
+          <div class="card-value" id="overviewDsaCount">0 / 0</div>
+          <div class="card-subtitle"><span id="overviewDsaPercent">0%</span> of curated standard problems</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="overviewDsaBar" style="width: 0%;"></div>
           </div>
         </div>
 
-        <!-- Streak & Consistency -->
-        <div class="metric-card accent-red">
-          <div class="metric-card-header">
-            <span>Discipline Streak</span>
-            <span>🔥</span>
-          </div>
-          <div class="metric-value" id="dashStreak">0 Days</div>
-          <div class="metric-subtext">Daily Consistency is FAANG Key</div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill fill-multi" style="width: 100%;"></div>
-          </div>
+        <div class="card">
+          <div class="card-title">Consistency Streak</div>
+          <div class="card-value" id="overviewStreak">0 Days</div>
+          <div class="card-subtitle">Continuous daily practice days</div>
         </div>
       </div>
 
-      <!-- Quick Action & High-Frequency Approach Framework -->
-      <div class="dashboard-grid-2col">
-        <!-- 8-Step Problem Solving Approach Guide -->
-        <div class="section-panel">
-          <div class="section-panel-header">
-            <div class="section-panel-title">
-              <span>🧠</span> The Google & FAANG 8-Step Problem-Solving Approach
-            </div>
-            <span class="badge badge-google">Systematic Framework</span>
-          </div>
-          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Google interviewers test your <strong>structured thought process</strong> rather than raw memorization. Follow these 8 non-negotiable steps for every problem:
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <div class="card">
+          <h2 style="font-size: 16px; font-weight: 500; margin-bottom: 12px;">Google Interview Standard Overview</h2>
+          <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px;">
+            Google technical evaluations place heavy emphasis on structured reasoning, formal complexity proofs, and boundary awareness before code synthesis. Review the official cognitive framework in the <strong>Problem-Solving Guide</strong> tab before working on directory problems.
           </p>
-          <div class="framework-checklist-container" style="margin: 0; background: var(--bg-card-hover);">
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-blue);">01</span>
-              <div class="step-content">
-                <div class="step-header-title">Clarify & Constraints</div>
-                <div class="step-description">Ask: Bounds of N, range of values, negative numbers, empty arrays, duplicate handling, memory limits.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-blue);">02</span>
-              <div class="step-content">
-                <div class="step-header-title">Examples & Edge Cases</div>
-                <div class="step-description">Manually construct at least 3 cases: small base case (N=0, 1), standard case, and extreme/adversarial boundary case.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-yellow);">03</span>
-              <div class="step-content">
-                <div class="step-header-title">Brute Force & Bottleneck Analysis</div>
-                <div class="step-description">State naive solution first and its Big-O. Explain why it fails and where the repetitive work occurs.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-green);">04</span>
-              <div class="step-content">
-                <div class="step-header-title">Pattern & Optimal Invariants</div>
-                <div class="step-description">Identify data structure fit: Monotonic Stack, Two Pointers, Sliding Window, Topo Sort, Trie, Union-Find, DP.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-green);">05</span>
-              <div class="step-content">
-                <div class="step-header-title">Big-O Complexity Proof</div>
-                <div class="step-description">Formulate exact Time and Space trade-offs with the interviewer before typing a single character of code.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-blue);">06</span>
-              <div class="step-content">
-                <div class="step-header-title">Production-Grade Clean Code</div>
-                <div class="step-description">Write modular, self-documenting code with meaningful variable names and defensive bounds-checking.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-red);">07</span>
-              <div class="step-content">
-                <div class="step-header-title">Manual Dry Run Line-By-Line</div>
-                <div class="step-description">Step through your code using a state table on a sample test input. Catch off-by-one errors before running.</div>
-              </div>
-            </div>
-            <div class="checklist-step-item">
-              <span style="font-weight: 700; color: var(--google-yellow);">08</span>
-              <div class="step-content">
-                <div class="step-header-title">Post-Mortem & Spaced Repetition</div>
-                <div class="step-description">Summarize the core mental model in your notes. Schedule spaced reviews at Day 1, Day 3, and Day 7.</div>
-              </div>
-            </div>
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-primary" id="btnGoToGuide">
+              Review Problem-Solving Guide
+            </button>
+            <button class="btn btn-outline" id="btnGoToDsa">
+              Open DSA Directory
+            </button>
           </div>
         </div>
 
-        <!-- Quick Focus Session & AI Roadmap Preview -->
-        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-          <div class="section-panel" style="margin-bottom: 0;">
-            <div class="section-panel-header">
-              <div class="section-panel-title">
-                <span>⏱️</span> Start Deep Work Focus
-              </div>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-              Maintain deliberate practice blocks to hit your 4-hour daily target.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <button class="btn btn-primary" id="dashStartPomodoroBtn">
-                <span>🍅</span> Start 25m Pomodoro Block
-              </button>
-              <button class="btn btn-outline" id="dashStartInterviewBtn">
-                <span>🏆</span> Start 45m Google Mock Interview Timer
-              </button>
-            </div>
-          </div>
-
-          <!-- AI & ML Engineering Fast Track -->
-          <div class="section-panel" style="margin-bottom: 0;">
-            <div class="section-panel-header">
-              <div class="section-panel-title">
-                <span>🤖</span> AI Engineering Track
-              </div>
-              <span class="badge badge-easy" id="dashAiProgressBadge">0/12 Modules</span>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-              From Autograd & Transformers from Scratch to vLLM, PagedAttention, and Scaled ML Systems.
-            </p>
-            <button class="btn btn-outline" id="dashViewAiBtn" style="width: 100%;">
-              Explore AI & ML Curriculum →
+        <div class="card">
+          <h2 style="font-size: 16px; font-weight: 500; margin-bottom: 12px;">Quick Session Starter</h2>
+          <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+            Launch a timed work interval to maintain focus and record deliberate practice hours.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn btn-primary" id="overviewStartPomodoro">
+              Start 25-Minute Focus Block
+            </button>
+            <button class="btn btn-outline" id="overviewStartInterview">
+              Start 45-Minute Mock Interview
             </button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: DSA PROBLEM TRACKER -->
-    <section class="tab-pane" id="tab-dsa">
-      <div class="section-panel-header" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-        <div>
-          <h2 style="font-size: 1.4rem; font-weight: 800;">Google High-Frequency DSA Tracker</h2>
-          <p style="font-size: 0.85rem; color: var(--text-secondary);">
-            Solve problems systematically using the 8-step framework with complexity proofs and spaced repetition.
-          </p>
+    <!-- TAB 2: PROBLEM-SOLVING GUIDE (THE USER'S REQUESTED DEDICATED SECTION) -->
+    <section class="tab-pane" id="tab-guide">
+      <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 22px; font-weight: 500; margin-bottom: 6px;">How to Solve a Problem: The Google Engineering Framework</h1>
+        <p style="color: var(--text-secondary);">
+          A systematic mental blueprint outlining the required phases of thought, analysis, verification, and code construction for technical interviews.
+        </p>
+      </div>
+
+      <div class="guide-container">
+        <!-- Step 1 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 01</span>
+            <h3 class="guide-step-title">Problem Interrogation & Constraint Discovery</h3>
+          </div>
+          <div class="guide-step-body">
+            Never begin designing or writing code immediately. Spend the first 3 to 5 minutes clarifying ambiguities with the interviewer. Formulate explicit questions to uncover hidden assumptions:
+            <ul class="guide-list">
+              <li><strong>Input Bounds & Scale:</strong> What is the maximum value of $N$? (If $N \le 10^5$, an $O(N \log N)$ or $O(N)$ solution is required; if $N \le 20$, backtracking/exponential is acceptable).</li>
+              <li><strong>Value Types & Ranges:</strong> Can values be negative? Are integers signed 32-bit or 64-bit? Can values exceed standard integer overflow limits?</li>
+              <li><strong>Duplicates & Ordering:</strong> Are elements strictly unique, or can duplicates occur? Is the input ordered, partially ordered, or random?</li>
+              <li><strong>Memory & Scale Constraints:</strong> Does the input fit entirely in main memory, or must this stream from external storage/disk?</li>
+            </ul>
+          </div>
         </div>
-        <button class="btn btn-primary" id="addNewProblemBtn">
-          <span>+</span> Add Custom Problem
+
+        <!-- Step 2 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 02</span>
+            <h3 class="guide-step-title">Test Case Generation (Base, Typical, Adversarial)</h3>
+          </div>
+          <div class="guide-step-body">
+            Construct at least three representative test cases manually before proposing algorithms:
+            <ul class="guide-list">
+              <li><strong>Base Case / Degenerate Input:</strong> $N = 0$ (empty collection), $N = 1$ (single element), or minimal valid input boundary.</li>
+              <li><strong>Standard Non-Trivial Case:</strong> A representative general example that requires non-trivial processing (e.g., 5 to 7 elements with varying values).</li>
+              <li><strong>Adversarial / Edge Case:</strong> Inputs designed to break naive assumptions: all identical elements, sorted in reverse order, negative numbers, disconnected graphs, or cyclic dependencies.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 03</span>
+            <h3 class="guide-step-title">Baseline Solution & Bottleneck Identification</h3>
+          </div>
+          <div class="guide-step-body">
+            State the brute-force or naive solution explicitly and compute its Big-O time and space complexity ($O(N^2)$, $O(2^N)$).
+            <ul class="guide-list">
+              <li>Analyze <em>why</em> the naive solution is inefficient: Where is repetitive or redundant work being computed?</li>
+              <li>Look for unneeded recalculations, repeated linear scans, or duplicate subtree evaluations. Pinpoint the specific operational bottleneck.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 04</span>
+            <h3 class="guide-step-title">Pattern Matching & Invariant Selection</h3>
+          </div>
+          <div class="guide-step-body">
+            Identify the governing algorithmic pattern that eliminates the bottleneck:
+            <ul class="guide-list">
+              <li><strong>Contiguous Subarray / Window:</strong> Sliding Window (fixed/dynamic length) or Prefix Sum frequency mapping.</li>
+              <li><strong>Sorted Sequence:</strong> Two Pointers (converging/parallel) or Binary Search on index/answer space.</li>
+              <li><strong>Monotonic Traversal:</strong> Next greater/smaller element queries using a Monotonic Stack or Monotonic Deque.</li>
+              <li><strong>Dependencies & Topological Ordering:</strong> Directed Acyclic Graph (DAG) with Kahn's BFS or DFS cycle detection.</li>
+              <li><strong>Shortest Path on Weighted Graphs:</strong> Dijkstra (non-negative weights), Bellman-Ford (negative edges), or BFS for unweighted graphs.</li>
+              <li><strong>Disjoint Partitioning & Connectivity:</strong> Union-Find (Disjoint Set Union) with path compression and rank.</li>
+              <li><strong>Prefix Queries & String Dictionaries:</strong> Trie (Prefix Tree) with character branching.</li>
+              <li><strong>Optimal Substructure with Overlapping Subproblems:</strong> Dynamic Programming (Tabulation bottom-up or Memoization top-down).</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 05</span>
+            <h3 class="guide-step-title">Big-O Complexity Derivation & Interviewer Alignment</h3>
+          </div>
+          <div class="guide-step-body">
+            Before typing code, verbally walk the interviewer through the proposed algorithm and formally state:
+            <ul class="guide-list">
+              <li><strong>Time Complexity:</strong> $O(T)$ in terms of vertices $V$, edges $E$, or input size $N$, proving each step's bound.</li>
+              <li><strong>Space Complexity:</strong> $O(S)$ auxiliary memory, accounting for recursion stack depth, hash tables, and data structure allocations.</li>
+              <li>Obtain explicit verbal confirmation from the interviewer: <em>"Does this approach align with your expectations before I implement it?"</em></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 06</span>
+            <h3 class="guide-step-title">Production-Grade Code Construction</h3>
+          </div>
+          <div class="guide-step-body">
+            Implement the solution following standard Google software engineering guidelines:
+            <ul class="guide-list">
+              <li><strong>Modular Structure:</strong> Decompose large procedures into concise, single-responsibility helper functions.</li>
+              <li><strong>Explicit Naming:</strong> Use descriptive variable identifiers (e.g., <code>prefixSumCounts</code> rather than <code>m</code>; <code>leftBound</code> rather than <code>l</code>).</li>
+              <li><strong>Defensive Guard Clauses:</strong> Validate null, empty, or single-element inputs at the function entry point.</li>
+              <li><strong>Avoid Global State:</strong> Keep variables properly scoped without side-effects.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 7 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 07</span>
+            <h3 class="guide-step-title">Mental Dry Run & Line-by-Line Tracing</h3>
+          </div>
+          <div class="guide-step-body">
+            Do not execute or announce completion immediately upon typing the last line. Step through your code line-by-line:
+            <ul class="guide-list">
+              <li>Trace a non-trivial sample input using a state tracking table (listing pointer positions, current loop index, and variable values).</li>
+              <li>Check boundary indexes (<code>0</code>, <code>n - 1</code>, <code>mid - 1</code>, <code>mid + 1</code>) to prevent off-by-one errors.</li>
+              <li>Verify loop termination invariants and recursion base cases.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 8 -->
+        <div class="guide-step-card">
+          <div class="guide-step-header">
+            <span class="guide-step-num">Phase 08</span>
+            <h3 class="guide-step-title">Post-Mortem & Generalized Takeaways</h3>
+          </div>
+          <div class="guide-step-body">
+            Conclude the exercise by articulating how the solution scales and records lessons for long-term memory:
+            <ul class="guide-list">
+              <li>Could memory usage be reduced from $O(N)$ to $O(1)$ by mutating pointers or rolling variables?</li>
+              <li>What general family of problems does this technique solve?</li>
+              <li>Log the core insight into your preparation notes and schedule spaced reviews.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DSA DIRECTORY -->
+    <section class="tab-pane" id="tab-dsa">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h2 style="font-size: 18px; font-weight: 500;">Google High-Frequency DSA Directory</h2>
+          <p style="color: var(--text-secondary); font-size: 13px;">Curated algorithmic problem set evaluated with the 8-step framework.</p>
+        </div>
+        <button class="btn btn-primary" id="btnOpenAddProblemModal">
+          Add Custom Problem
         </button>
       </div>
 
-      <!-- Filters -->
       <div class="filter-bar">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="dsaSearchInput" class="search-input" placeholder="Search problems, patterns, or topics...">
-        </div>
-
-        <select id="dsaTopicFilter" class="select-filter">
+        <input type="text" id="dsaSearchInput" class="search-input" placeholder="Search by title, pattern, or topic...">
+        <select id="dsaTopicFilter" class="select-input">
           <option value="all">All Topics</option>
         </select>
-
-        <select id="dsaDifficultyFilter" class="select-filter">
+        <select id="dsaDifficultyFilter" class="select-input">
           <option value="all">All Difficulties</option>
           <option value="Easy">Easy</option>
           <option value="Medium">Medium</option>
           <option value="Hard">Hard</option>
         </select>
-
-        <select id="dsaStatusFilter" class="select-filter">
+        <select id="dsaStatusFilter" class="select-input">
           <option value="all">All Statuses</option>
           <option value="todo">To Do</option>
           <option value="in_progress">In Progress</option>
@@ -275,36 +353,41 @@
         </select>
       </div>
 
-      <!-- Problem List Container -->
-      <div class="problems-table-container" id="dsaProblemsContainer">
-        <!-- Injected via JavaScript -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Problem Title</th>
+              <th>Topic</th>
+              <th>Difficulty</th>
+              <th>Pattern</th>
+              <th>Time / Space</th>
+              <th>Checklist</th>
+            </tr>
+          </thead>
+          <tbody id="dsaTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- TAB 3: AI ENGINEERING ROADMAP -->
+    <!-- TAB 4: AI CURRICULUM -->
     <section class="tab-pane" id="tab-ai">
-      <div class="section-panel-header" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-          <h2 style="font-size: 1.4rem; font-weight: 800;">AI & ML Engineer Roadmap</h2>
-          <p style="font-size: 0.85rem; color: var(--text-secondary);">
-            Master mathematical foundations, PyTorch implementations from scratch, LLM inference architectures, and FAANG ML System Design.
-          </p>
+          <h2 style="font-size: 18px; font-weight: 500;">AI & ML Engineering Curriculum</h2>
+          <p style="color: var(--text-secondary); font-size: 13px;">Systematic topics from autograd and transformers from scratch to vLLM and ML System Design.</p>
         </div>
-        <button class="btn btn-primary" id="addNewAiTopicBtn">
-          <span>+</span> Add Custom AI Topic
-        </button>
       </div>
 
-      <!-- AI Filters -->
       <div class="filter-bar">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="aiSearchInput" class="search-input" placeholder="Search AI concepts (e.g. RoPE, KV cache, LoRA)...">
-        </div>
-        <select id="aiModuleFilter" class="select-filter">
-          <option value="all">All AI Modules</option>
+        <input type="text" id="aiSearchInput" class="search-input" placeholder="Search AI concepts...">
+        <select id="aiModuleFilter" class="select-input">
+          <option value="all">All Modules</option>
         </select>
-        <select id="aiStatusFilter" class="select-filter">
+        <select id="aiStatusFilter" class="select-input">
           <option value="all">All Statuses</option>
           <option value="todo">To Do</option>
           <option value="in_progress">In Progress</option>
@@ -312,330 +395,326 @@
         </select>
       </div>
 
-      <!-- AI Topics Container -->
-      <div class="problems-table-container" id="aiTopicsContainer">
-        <!-- Injected via JavaScript -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Topic Title</th>
+              <th>Module</th>
+              <th>Difficulty</th>
+              <th>Practical Exercise</th>
+              <th>Checklist</th>
+            </tr>
+          </thead>
+          <tbody id="aiTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- TAB 4: STUDY HOURS TRACKER & TIMER -->
+    <!-- TAB 5: STUDY TRACKER -->
     <section class="tab-pane" id="tab-timer">
-      <div class="timer-hero-container">
-        <!-- Mode Switcher -->
-        <div class="timer-mode-selector">
-          <button class="timer-mode-btn active" data-mode="stopwatch">Stopwatch</button>
-          <button class="timer-mode-btn" data-mode="pomodoro">25m Pomodoro</button>
-          <button class="timer-mode-btn" data-mode="pomodoro50">50m Deep Work</button>
-          <button class="timer-mode-btn" data-mode="interview">45m Google Mock</button>
+      <div class="card" style="text-align: center; max-width: 680px; margin: 0 auto 24px auto; padding: 32px 24px;">
+        <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;">
+          <button class="btn btn-outline timer-mode-btn active" data-mode="stopwatch">Stopwatch</button>
+          <button class="btn btn-outline timer-mode-btn" data-mode="pomodoro">25m Pomodoro</button>
+          <button class="btn btn-outline timer-mode-btn" data-mode="pomodoro50">50m Deep Work</button>
+          <button class="btn btn-outline timer-mode-btn" data-mode="interview">45m Mock Interview</button>
         </div>
 
-        <div class="timer-topic-pill" id="timerTopicPill">
-          <span>🎯 Current Focus:</span>
-          <strong id="timerActiveTopicText">DSA Practice & Problem Solving</strong>
-          <button id="timerChangeTopicBtn" class="btn btn-sm btn-outline" style="margin-left: 0.5rem;">Edit</button>
+        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+          Active Task: <strong id="timerActiveTopicText" style="color: var(--text-primary);">DSA Deliberate Practice</strong>
+          <button class="btn btn-outline btn-sm" id="btnChangeTimerTopic" style="margin-left: 8px;">Edit Task</button>
         </div>
 
-        <div class="digital-clock-display" id="mainClockDisplay">00:00:00</div>
+        <div class="clock-display" id="mainClockDisplay">00:00:00</div>
 
-        <div class="timer-controls-row">
-          <button class="btn btn-success btn-lg" id="timerStartBtn">▶ Start Focus</button>
-          <button class="btn btn-outline btn-lg" id="timerPauseBtn" style="display: none;">⏸ Pause</button>
-          <button class="btn btn-outline btn-lg" id="timerResumeBtn" style="display: none;">▶ Resume</button>
-          <button class="btn btn-outline btn-lg" id="timerStopBtn" style="display: none;">⏹ Finish & Log Session</button>
-          <button class="btn btn-outline btn-lg" id="timerResetBtn">↺ Reset</button>
+        <div style="display: flex; justify-content: center; gap: 12px;">
+          <button class="btn btn-primary" id="timerStartBtn">Start Session</button>
+          <button class="btn btn-outline" id="timerPauseBtn" style="display: none;">Pause</button>
+          <button class="btn btn-outline" id="timerResumeBtn" style="display: none;">Resume</button>
+          <button class="btn btn-outline" id="timerStopBtn" style="display: none;">Finish & Log</button>
+          <button class="btn btn-outline" id="timerResetBtn">Reset</button>
         </div>
       </div>
 
-      <!-- Study Session Log Table -->
-      <div class="section-panel">
-        <div class="section-panel-header">
-          <div class="section-panel-title">
-            <span>📜</span> Study Log & Deep Work History
-          </div>
-          <span style="font-size: 0.85rem; color: var(--text-secondary);">
-            Cumulative: <strong id="timerTotalHoursLoggedText">0.0h</strong>
-          </span>
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 15px; font-weight: 500;">Study Log & Practice Records</h3>
+          <span style="font-size: 12px; color: var(--text-secondary);">Total Recorded: <strong id="timerTotalRecorded">0.0h</strong></span>
         </div>
-        <div id="sessionHistoryContainer">
-          <!-- Injected via JavaScript -->
+        <div id="sessionHistoryTableContainer">
+          <!-- Rendered by JS -->
         </div>
       </div>
     </section>
 
-    <!-- TAB 5: DAILY GOOGLE & AI NEWS -->
+    <!-- TAB 6: INDUSTRY NEWS -->
     <section class="tab-pane" id="tab-news">
-      <div class="section-panel-header" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-          <h2 style="font-size: 1.4rem; font-weight: 800;">Daily Google & AI Intelligence Feed</h2>
-          <p style="font-size: 0.85rem; color: var(--text-secondary);">
-            Live updates on Google Research, DeepMind breakthroughs, Cloud AI infrastructure, and AI engineering.
-          </p>
+          <h2 style="font-size: 18px; font-weight: 500;">Daily Google & AI Industry Feed</h2>
+          <p style="color: var(--text-secondary); font-size: 13px;">Daily developments in Google AI, DeepMind, Cloud infrastructure, and systems engineering.</p>
         </div>
         <button class="btn btn-outline" id="refreshNewsBtn">
-          <span>🔄</span> Refresh Daily News
+          Refresh Updates
         </button>
       </div>
 
       <div class="filter-bar">
-        <button class="btn btn-sm btn-primary news-category-btn active" data-category="all">All News</button>
-        <button class="btn btn-sm btn-outline news-category-btn" data-category="google_ai">Google AI & DeepMind</button>
-        <button class="btn btn-sm btn-outline news-category-btn" data-category="google_tech">Google Cloud & Tech</button>
-        <button class="btn btn-sm btn-outline news-category-btn" data-category="ml_faang">FAANG Machine Learning</button>
+        <button class="btn btn-sm btn-primary news-filter-btn active" data-cat="all">All News</button>
+        <button class="btn btn-sm btn-outline news-filter-btn" data-cat="google_ai">Google AI & DeepMind</button>
+        <button class="btn btn-sm btn-outline news-filter-btn" data-cat="google_tech">Google Cloud & Tech</button>
+        <button class="btn btn-sm btn-outline news-filter-btn" data-cat="ml_faang">FAANG Machine Learning</button>
       </div>
 
-      <!-- News Feed Cards Container -->
-      <div class="news-feed-grid" id="newsFeedContainer">
-        <!-- Injected via JavaScript -->
+      <div class="card" style="padding: 0;" id="newsListContainer">
+        <!-- Rendered by JS -->
       </div>
     </section>
 
-    <!-- TAB 6: SETTINGS & BACKUP -->
-    <section class="tab-pane" id="tab-settings">
-      <div class="section-panel" style="max-width: 650px; margin: 0 auto;">
-        <div class="section-panel-header">
-          <div class="section-panel-title">
-            <span>⚙️</span> Study Goals & Backup Settings
+    <!-- TAB 7: ADMINISTRATION & SECURITY -->
+    <section class="tab-pane" id="tab-admin">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        
+        <!-- Access Control & Security -->
+        <div class="card">
+          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Workspace Security & Master Passkey</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Update your master passkey to protect your personal workspace. Anyone visiting this URL requires your passkey or an authorized guest token.
+          </p>
+
+          <form id="changePasskeyForm">
+            <div class="form-group">
+              <label class="form-label" for="currentPasskeyInput">Current Master Passkey</label>
+              <input type="password" id="currentPasskeyInput" class="form-control" placeholder="Enter current passkey..." required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="newPasskeyInput">New Master Passkey</label>
+              <input type="password" id="newPasskeyInput" class="form-control" placeholder="Enter new passkey..." required minlength="4">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Update Master Passkey</button>
+          </form>
+        </div>
+
+        <!-- Authorized Guest Tokens -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-size: 15px; font-weight: 500;">Authorized Guest Access Tokens</h3>
+            <button class="btn btn-outline btn-sm" id="btnGenerateGuestToken">Generate New Token</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Grant temporary or personal access to trusted peers or mentors by generating a token. You can revoke it anytime.
+          </p>
+          <div id="guestTokenListContainer" style="font-size: 13px;">
+            <!-- Rendered by JS -->
           </div>
         </div>
 
-        <form id="settingsForm">
-          <div class="form-group">
-            <label class="form-label" for="settingsDailyGoal">Daily Study Hours Target (Hours)</label>
-            <input type="number" id="settingsDailyGoal" class="form-control" min="1" max="16" step="0.5" value="4">
-            <small style="color: var(--text-secondary);">Recommended for intense Google interview preparation: 4.0 hours/day</small>
+        <!-- Access Requests Queue -->
+        <div class="card">
+          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Incoming Access Requests</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            Requests submitted by unauthorized visitors who attempted to sign in.
+          </p>
+          <div id="accessRequestsListContainer" style="font-size: 13px;">
+            <!-- Rendered by JS -->
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="settingsCareerGoal">Total Target Mastery Hours (Hours)</label>
-            <input type="number" id="settingsCareerGoal" class="form-control" min="50" max="2000" step="10" value="300">
-            <small style="color: var(--text-secondary);">Benchmark hours to attain Google/FAANG SWE and AI readiness</small>
-          </div>
-
-          <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-            <button type="submit" class="btn btn-primary">Save Settings</button>
-          </div>
-        </form>
-
-        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
-
-        <div class="section-panel-title" style="margin-bottom: 1rem;">
-          <span>💾</span> Data Backup & Cloud Portability
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
-          All your solved problems, hours logged, and notes are saved locally in your browser. Export a JSON backup anytime or restore across devices.
-        </p>
 
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-          <button class="btn btn-outline" id="exportDataBtn">
-            <span>⬇️</span> Export Data Backup (JSON)
-          </button>
-          <label class="btn btn-outline" style="cursor: pointer;">
-            <span>⬆️</span> Restore Backup (JSON)
-            <input type="file" id="importDataInput" accept=".json" style="display: none;">
-          </label>
+        <!-- Data Backup & Goals -->
+        <div class="card">
+          <h3 style="font-size: 15px; font-weight: 500; margin-bottom: 12px;">Study Targets & Data Portability</h3>
+          <form id="studyTargetsForm" style="margin-bottom: 20px;">
+            <div class="form-group">
+              <label class="form-label" for="dailyTargetHoursInput">Daily Target Hours</label>
+              <input type="number" id="dailyTargetHoursInput" class="form-control" min="1" max="16" step="0.5" value="4">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="careerTargetHoursInput">Career Mastery Target Hours</label>
+              <input type="number" id="careerTargetHoursInput" class="form-control" min="50" max="2000" step="10" value="300">
+            </div>
+            <button type="submit" class="btn btn-outline btn-sm">Save Targets</button>
+          </form>
+
+          <div style="border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; gap: 8px;">
+            <button class="btn btn-outline btn-sm" id="btnExportBackup">Export JSON Backup</button>
+            <label class="btn btn-outline btn-sm" style="cursor: pointer;">
+              Restore JSON
+              <input type="file" id="importBackupInput" accept=".json" style="display: none;">
+            </label>
+          </div>
         </div>
+
       </div>
     </section>
 
   </main>
 
-  <!-- Problem Detail Modal -->
-  <div class="modal-backdrop" id="problemModal">
-    <div class="modal-dialog">
-      <button class="modal-close-btn" id="closeProblemModalBtn">&times;</button>
-      
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem;">
-        <span class="badge" id="modalProblemDifficulty">Medium</span>
-        <span class="badge badge-google" id="modalProblemGoogleFreq">Google Favorite</span>
-        <span class="badge" id="modalProblemTopic" style="background: var(--bg-secondary);">Topic</span>
-      </div>
-
-      <h2 id="modalProblemTitle" style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem;">Two Sum</h2>
-      
-      <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
-        <a id="modalProblemLink" href="#" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 0.25rem;">
-          <span>🔗 Open on LeetCode / Practice Link</span>
-        </a>
-      </div>
-
-      <!-- Problem Pattern & Key Insight -->
-      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
-        <div style="font-weight: 700; font-size: 0.85rem; color: var(--google-blue); margin-bottom: 0.25rem;">
-          💡 ALGORITHMIC PATTERN & INSIGHT
+  <!-- Problem Modal -->
+  <div class="modal-overlay" id="problemDetailModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="badge" id="modalProblemDifficulty">Medium</span>
+          <span class="badge" id="modalProblemTopic" style="background-color: var(--bg-surface-hover); margin-left: 6px;">Topic</span>
         </div>
-        <p id="modalProblemPattern" style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.35rem;">Hash Map Complement</p>
-        <p id="modalProblemInsight" style="font-size: 0.85rem; color: var(--text-secondary);">Key insight explanation goes here.</p>
-        <div style="display: flex; gap: 1.5rem; margin-top: 0.65rem; font-size: 0.8rem; color: var(--text-muted);">
-          <span>⏱ Time: <strong id="modalProblemTimeComp" style="color: var(--text-primary);">O(N)</strong></span>
-          <span>💾 Space: <strong id="modalProblemSpaceComp" style="color: var(--text-primary);">O(N)</strong></span>
+        <button class="modal-close" id="closeProblemModalBtn">&times;</button>
+      </div>
+
+      <h2 id="modalProblemTitle" style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">Two Sum</h2>
+      <a id="modalProblemLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 12px; display: inline-block; margin-bottom: 16px;">
+        Open LeetCode Practice Link &rarr;
+      </a>
+
+      <div style="background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--google-blue); text-transform: uppercase; margin-bottom: 4px;">Algorithmic Pattern & Invariant</div>
+        <div id="modalProblemPattern" style="font-weight: 500; margin-bottom: 4px;">Hash Map Complement</div>
+        <div id="modalProblemInsight" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;"></div>
+        <div style="display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+          <span>Time: <strong id="modalProblemTimeComp" style="color: var(--text-primary);">O(N)</strong></span>
+          <span>Space: <strong id="modalProblemSpaceComp" style="color: var(--text-primary);">O(N)</strong></span>
         </div>
       </div>
 
-      <!-- The 8-Step Problem Solving Framework Checklist -->
       <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <h3 style="font-size: 1.05rem; font-weight: 700;">8-Step Approach Checklist</h3>
-          <span id="modalStepsCounter" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">0/8 Complete</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span class="form-label" style="margin: 0;">8-Step Problem Solving Checklist</span>
+          <span id="modalStepsCount" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">0/8 Complete</span>
         </div>
-        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-          Check each step as you complete it during your practice session.
-        </p>
-
-        <div class="framework-checklist-container" id="modalStepsChecklist">
-          <!-- Injected via JavaScript -->
+        <div id="modalStepsList" style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 16px; background-color: var(--bg-surface);">
+          <!-- Checklist items -->
         </div>
       </div>
 
-      <!-- Status Selection -->
-      <div class="form-group" style="margin-top: 1.25rem;">
-        <label class="form-label" for="modalProblemStatus">Problem Mastery Status</label>
-        <select id="modalProblemStatus" class="select-filter" style="width: 100%;">
+      <div class="form-group">
+        <label class="form-label" for="modalProblemStatus">Mastery Status</label>
+        <select id="modalProblemStatus" class="select-input" style="width: 100%;">
           <option value="todo">To Do</option>
           <option value="in_progress">In Progress</option>
-          <option value="mastered">Mastered (Solved with Full Checklist)</option>
-          <option value="needs_revision">Needs Revision (Review in 3 Days)</option>
+          <option value="mastered">Mastered (All 8 steps completed)</option>
+          <option value="needs_revision">Needs Revision (Review in 3 days)</option>
         </select>
       </div>
 
-      <!-- Problem Notes -->
       <div class="form-group">
-        <label class="form-label" for="modalProblemNotes">Takeaways, Edge Cases & Pseudocode</label>
-        <textarea id="modalProblemNotes" class="form-control" placeholder="Write down subtle edge cases, tricky base cases, or code takeaways for spaced repetition..."></textarea>
+        <label class="form-label" for="modalProblemNotes">Takeaways & Edge Cases Notes</label>
+        <textarea id="modalProblemNotes" class="form-control" rows="3" placeholder="Document tricky edge cases, base cases, or complexity tradeoffs..."></textarea>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
-        <button class="btn btn-outline" id="modalStartTimerBtn">
-          <span>⏱️</span> Start Timer for this Problem
-        </button>
-        <button class="btn btn-primary" id="modalSaveProblemBtn">
-          Save & Close
-        </button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <button class="btn btn-outline" id="btnModalStartTimer">Start Session on Problem</button>
+        <button class="btn btn-primary" id="btnModalSaveProblem">Save & Close</button>
       </div>
     </div>
   </div>
 
-  <!-- AI Topic Detail Modal -->
-  <div class="modal-backdrop" id="aiTopicModal">
-    <div class="modal-dialog">
-      <button class="modal-close-btn" id="closeAiTopicModalBtn">&times;</button>
-      
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem;">
-        <span class="badge" id="modalAiTopicDifficulty">Hard</span>
-        <span class="badge badge-google" id="modalAiTopicImportance">Core FAANG</span>
-        <span class="badge" id="modalAiTopicModule" style="background: var(--bg-secondary);">Module</span>
+  <!-- AI Topic Modal -->
+  <div class="modal-overlay" id="aiTopicModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="badge" id="modalAiDifficulty">Hard</span>
+          <span class="badge" id="modalAiModule" style="background-color: var(--bg-surface-hover); margin-left: 6px;">Module</span>
+        </div>
+        <button class="modal-close" id="closeAiTopicModalBtn">&times;</button>
       </div>
 
-      <h2 id="modalAiTopicTitle" style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.75rem;">Transformer Attention</h2>
-      
-      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
-        <div style="font-weight: 700; font-size: 0.85rem; color: var(--google-blue); margin-bottom: 0.25rem;">
-          🎯 KEY CONCEPTS & EQUATIONS
-        </div>
-        <p id="modalAiTopicConcepts" style="font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.65rem;"></p>
-        
-        <div style="font-weight: 700; font-size: 0.85rem; color: var(--google-green); margin-bottom: 0.25rem;">
-          💻 PRACTICAL HANDS-ON EXERCISE
-        </div>
-        <p id="modalAiTopicExercise" style="font-size: 0.85rem; color: var(--text-secondary);"></p>
+      <h2 id="modalAiTitle" style="font-size: 18px; font-weight: 500; margin-bottom: 12px;">Multi-Head Attention</h2>
+
+      <div style="background-color: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--google-blue); text-transform: uppercase; margin-bottom: 4px;">Key Concepts & Mathematical Rigor</div>
+        <div id="modalAiConcepts" style="font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 10px;"></div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--google-green); text-transform: uppercase; margin-bottom: 4px;">Practical Implementation Exercise</div>
+        <div id="modalAiExercise" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;"></div>
       </div>
 
-      <!-- AI 5-Step Framework Checklist -->
       <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <h3 style="font-size: 1.05rem; font-weight: 700;">AI Mastery Checklist</h3>
-          <span id="modalAiStepsCounter" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">0/5 Complete</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span class="form-label" style="margin: 0;">AI Mastery Checklist</span>
+          <span id="modalAiStepsCount" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">0/5 Complete</span>
         </div>
-        <div class="framework-checklist-container" id="modalAiStepsChecklist">
-          <!-- Injected via JavaScript -->
+        <div id="modalAiStepsList" style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 16px;">
+          <!-- Checklist -->
         </div>
       </div>
 
-      <div class="form-group" style="margin-top: 1.25rem;">
-        <label class="form-label" for="modalAiTopicStatus">Mastery Status</label>
-        <select id="modalAiTopicStatus" class="select-filter" style="width: 100%;">
+      <div class="form-group">
+        <label class="form-label" for="modalAiStatus">Status</label>
+        <select id="modalAiStatus" class="select-input" style="width: 100%;">
           <option value="todo">To Do</option>
           <option value="in_progress">In Progress</option>
-          <option value="mastered">Mastered (Implemented & Explained)</option>
+          <option value="mastered">Mastered</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="modalAiTopicNotes">Implementation Notes & Equations</label>
-        <textarea id="modalAiTopicNotes" class="form-control" placeholder="Jot down mathematical formulas, PyTorch code snippets, or architecture observations..."></textarea>
+        <label class="form-label" for="modalAiNotes">Implementation Observations</label>
+        <textarea id="modalAiNotes" class="form-control" rows="3" placeholder="Notes on PyTorch implementation, tensors, or architecture..."></textarea>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
-        <button class="btn btn-outline" id="modalStartAiTimerBtn">
-          <span>⏱️</span> Start Timer for this Topic
-        </button>
-        <button class="btn btn-primary" id="modalSaveAiTopicBtn">
-          Save & Close
-        </button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <button class="btn btn-outline" id="btnModalStartAiTimer">Start Session on Topic</button>
+        <button class="btn btn-primary" id="btnModalSaveAi">Save & Close</button>
       </div>
     </div>
   </div>
 
   <!-- Add Custom Problem Modal -->
-  <div class="modal-backdrop" id="addCustomModal">
-    <div class="modal-dialog">
-      <button class="modal-close-btn" id="closeAddCustomModalBtn">&times;</button>
-      <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 1.25rem;">Add Custom DSA Problem</h2>
-
+  <div class="modal-overlay" id="addProblemModal">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">Add Custom DSA Problem</div>
+        <button class="modal-close" id="closeAddProblemBtn">&times;</button>
+      </div>
       <form id="addCustomProblemForm">
         <div class="form-group">
-          <label class="form-label" for="customTitle">Problem Title</label>
-          <input type="text" id="customTitle" class="form-control" placeholder="e.g. Valid Parentheses" required>
+          <label class="form-label" for="custTitle">Problem Title</label>
+          <input type="text" id="custTitle" class="form-control" placeholder="e.g. Valid Parentheses" required>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
-            <label class="form-label" for="customTopic">Topic</label>
-            <select id="customTopic" class="select-filter" style="width: 100%;">
-              <!-- Injected via JavaScript -->
+            <label class="form-label" for="custTopic">Topic</label>
+            <select id="custTopic" class="select-input" style="width: 100%;">
+              <!-- Injected by JS -->
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label" for="customDifficulty">Difficulty</label>
-            <select id="customDifficulty" class="select-filter" style="width: 100%;">
+            <label class="form-label" for="custDifficulty">Difficulty</label>
+            <select id="custDifficulty" class="select-input" style="width: 100%;">
               <option value="Easy">Easy</option>
               <option value="Medium" selected>Medium</option>
               <option value="Hard">Hard</option>
             </select>
           </div>
         </div>
-
         <div class="form-group">
-          <label class="form-label" for="customLink">Problem / LeetCode URL</label>
-          <input type="url" id="customLink" class="form-control" placeholder="https://leetcode.com/problems/...">
+          <label class="form-label" for="custLink">Practice URL</label>
+          <input type="url" id="custLink" class="form-control" placeholder="https://leetcode.com/problems/...">
         </div>
-
         <div class="form-group">
-          <label class="form-label" for="customPattern">Algorithmic Pattern</label>
-          <input type="text" id="customPattern" class="form-control" placeholder="e.g. Monotonic Stack, Sliding Window">
+          <label class="form-label" for="custPattern">Algorithmic Pattern</label>
+          <input type="text" id="custPattern" class="form-control" placeholder="e.g. Monotonic Stack, Sliding Window">
         </div>
-
         <div class="form-group">
-          <label class="form-label" for="customInsight">Key Insight / Bottleneck</label>
-          <input type="text" id="customInsight" class="form-control" placeholder="Why this optimal pattern works...">
+          <label class="form-label" for="custInsight">Key Insight</label>
+          <input type="text" id="custInsight" class="form-control" placeholder="Reasoning and invariants...">
         </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-          <button type="button" class="btn btn-outline" id="cancelAddCustomBtn">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Problem</button>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" id="cancelAddProblemBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Directory</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- App Footer -->
+  <!-- Footer -->
   <footer class="app-footer">
-    <div style="margin-bottom: 0.5rem; font-weight: 700; color: var(--text-primary);">
-      ASCENT • Built specifically for Google & FAANG Interview Preparation & AI Engineering
-    </div>
-    <div>100% Free & Open Client-Side Web Application • No Hosting Charges • Offline Supported</div>
+    Google Engineering Workspace • Hosted on GitHub Pages • Personal Preparation Suite
   </footer>
 
-  <!-- Main JavaScript App -->
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

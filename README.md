@@ -1,42 +1,23 @@
-# 🎯 ASCENT — Google & FAANG DSA & AI Engineering Platform
+# Engineering Preparation Workspace: Google DSA & AI
 
-A personalized web application engineered to master Data Structures & Algorithms (DSA), AI & Machine Learning Engineering, study hour tracking, and real-time Google tech news.
+A professional interview preparation platform designed for Google and FAANG algorithmic problem solving, artificial intelligence curriculum, study hours tracking, and access-controlled deployment.
 
 ---
 
-## 🌟 Core Features
+## Workspace Structure
 
-### 1. 🧠 Google & FAANG 8-Step Problem-Solving Methodology
-Every problem integrates Google's structured interview framework directly into the interface:
-1. **Clarify & Constraints**: Boundary analysis ($N$, memory bounds, negative numbers, duplicates).
-2. **Examples & Edge Cases**: 3 custom cases (base, normal, adversarial).
-3. **Brute Force & Bottleneck**: Pinpointing redundant computation and Big-O baseline.
-4. **Pattern & Invariants**: Optimal pattern recognition (Monotonic Stack, Topo Sort, Trie, Two Pointers, DP, etc.).
-5. **Big-O Mathematical Proof**: State exact Time and Space complexities prior to coding.
-6. **Production-Quality Code**: Clean, modular, self-documenting implementation.
-7. **Manual Dry Run**: Line-by-line tracing with variable state tables.
-8. **Post-Mortem & Spaced Repetition**: Key mental models and scheduled revisits (Day 1, 3, 7).
+- **Overview:** Tracks preparation metrics, deliberate practice hours, and readiness indices.
+- **Problem-Solving Guide:** An eight-phase cognitive framework for constraint interrogation, bottleneck isolation, pattern matching, Big-O proofs, and dry runs.
+- **DSA Directory:** Curated high-frequency Google interview problems with an interactive 8-step approach checklist.
+- **AI Curriculum:** Progressive roadmap covering autograd from scratch, transformer multi-head attention, KV caching, model quantization, and FAANG ML System Design.
+- **Study Tracker:** Stopwatch, 25-minute Pomodoro, and 45-minute Google mock interview timers with session logging.
+- **Industry News:** Daily feed of Google AI, DeepMind, and systems engineering updates.
+- **Administration & Security:** Master passkey management, authorized guest token generation, access request moderation, and JSON data backup.
 
-### 2. 🧩 High-Frequency DSA Roadmap
-- 30+ Google and FAANG core questions (Trapping Rain Water, Subarray Sum Equals K, Alien Dictionary, Course Schedule II, Meeting Rooms III, Snapshot Array, Word Search II, etc.).
-- Add custom problems from LeetCode, Codeforces, or Striver's sheet with one click.
-- Filter by topic, difficulty, pattern, and mastery status.
+---
 
-### 3. 🤖 AI & ML Engineering Curriculum
-- Structured progression: Math & Autograd from scratch, Transformer Attention mechanisms, KV Caching, LoRA/QLoRA fine-tuning, PagedAttention, vLLM inference optimization, and Scaled ML System Design.
-- Practical implementation exercises and conceptual benchmarks.
+## Authentication & Access Control
 
-### 4. ⏱️ Professional Study Hours & Deep Work Tracker
-- Modes:
-  - **Free Stopwatch**: Log open-ended study blocks.
-  - **25-min Pomodoro & 50-min Deep Work**: Focus intervals with Web Audio API completion chimes.
-  - **45-min Google Mock Interview**: Countdown simulating real interview rounds.
-- Real-time aggregation of today's hours, weekly hours, discipline streaks, and Google Readiness Score.
-
-### 5. 📰 Live Daily Google & AI Tech News
-- Real-time RSS feeds covering Google AI, DeepMind research, Google Cloud, and FAANG ML engineering.
-- Automatic caching and offline fallbacks.
-
-### 6. 💾 100% Free, Offline-Ready & Private
-- Client-side storage via `localStorage` with zero server costs.
-- Complete JSON export and import for seamless multi-device backup.
+Access to this workspace is protected:
+- **Default Master Passkey:** `google2026` (changeable in the Administration & Security tab).
+- **Guest Access:** The administrator can issue single-use or revocable guest access tokens (`ACC-XXXXXX`) to grant access to peers or reviewers. Unauthorized visitors must request access through the portal.

@@ -1,46 +1,116 @@
-// Main Application Controller for ASCENT
+// Google Engineering Workspace - Application Controller
 
 import { DSA_TOPICS, DEFAULT_PROBLEM_STEPS } from "./data/dsaRoadmap.js";
 import { AI_MODULES, DEFAULT_AI_STEPS } from "./data/aiRoadmap.js";
 import { StorageManager } from "./storage.js";
 import { StudyTimer } from "./timer.js";
 import { NewsService } from "./newsService.js";
+import { AuthService } from "./auth.js";
 
-class AscentApp {
+class EngineeringWorkspace {
   constructor() {
     this.newsService = new NewsService();
     this.currentDsaProblem = null;
     this.currentAiTopic = null;
 
-    // Initialize Study Timer
     this.timer = new StudyTimer(
       (tickData) => this.handleTimerTick(tickData),
       (completeData) => this.handleTimerComplete(completeData)
     );
 
+    this.initAuth();
     this.initTheme();
     this.initNavigation();
-    this.initDashboard();
-    this.initDsaTracker();
-    this.initAiRoadmap();
+    this.initOverview();
+    this.initDsaDirectory();
+    this.initAiCurriculum();
     this.initTimerControls();
-    this.initDailyNews();
-    this.initSettingsAndBackup();
+    this.initIndustryNews();
+    this.initAdminAndSecurity();
+  }
+
+  // --- AUTHENTICATION GATE ---
+  initAuth() {
+    const authWall = document.getElementById("authWall");
+    const loginForm = document.getElementById("authLoginForm");
+    const passkeyInput = document.getElementById("authPasskeyInput");
+    const errorMsg = document.getElementById("authErrorMessage");
+    const userLabel = document.getElementById("headerUserLabel");
+    const logoutBtn = document.getElementById("headerLogoutBtn");
+
+    const checkAuthStatus = () => {
+      if (AuthService.isAuthenticated()) {
+        if (authWall) authWall.style.display = "none";
+        const user = AuthService.getCurrentUser();
+        if (userLabel) {
+          userLabel.textContent = user && user.role === "owner" ? "Harishraja (Owner)" : `Guest (${user?.label || "Authorized"})`;
+        }
+      } else {
+        if (authWall) authWall.style.display = "flex";
+      }
+    };
+
+    loginForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = passkeyInput?.value;
+      const res = AuthService.authenticate(val);
+      if (res.success) {
+        if (errorMsg) errorMsg.style.display = "none";
+        if (passkeyInput) passkeyInput.value = "";
+        checkAuthStatus();
+        this.updateOverview();
+      } else {
+        if (errorMsg) {
+          errorMsg.textContent = res.message;
+          errorMsg.style.display = "block";
+        }
+      }
+    });
+
+    logoutBtn?.addEventListener("click", () => {
+      if (confirm("Are you sure you want to lock the workspace and sign out?")) {
+        AuthService.logout();
+        checkAuthStatus();
+      }
+    });
+
+    // Request Access Modal
+    const reqModal = document.getElementById("requestAccessModal");
+    document.getElementById("openRequestAccessBtn")?.addEventListener("click", () => {
+      reqModal?.classList.add("open");
+    });
+    document.getElementById("closeRequestAccessBtn")?.addEventListener("click", () => {
+      reqModal?.classList.remove("open");
+    });
+    document.getElementById("cancelRequestAccessBtn")?.addEventListener("click", () => {
+      reqModal?.classList.remove("open");
+    });
+
+    document.getElementById("requestAccessForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("reqName")?.value;
+      const email = document.getElementById("reqEmail")?.value;
+      const reason = document.getElementById("reqReason")?.value;
+
+      AuthService.submitAccessRequest(name, email, reason);
+      alert("Your access request has been recorded. The administrator (Harishraja) has been notified in their Administration tab.");
+      reqModal?.classList.remove("open");
+      document.getElementById("requestAccessForm")?.reset();
+    });
+
+    checkAuthStatus();
   }
 
   // --- THEME ---
   initTheme() {
-    const savedTheme = localStorage.getItem("ascent_theme") || "dark";
+    const savedTheme = localStorage.getItem("workspace_theme") || "light";
     document.documentElement.setAttribute("data-theme", savedTheme);
-    const icon = document.getElementById("themeIcon");
-    if (icon) icon.textContent = savedTheme === "dark" ? "☀️" : "🌙";
 
     document.getElementById("themeToggleBtn")?.addEventListener("click", () => {
       const current = document.documentElement.getAttribute("data-theme");
-      const next = current === "dark" ? "light" : "dark";
+      const next = current === "light" ? "dark" : "light";
       document.documentElement.setAttribute("data-theme", next);
-      localStorage.setItem("ascent_theme", next);
-      if (icon) icon.textContent = next === "dark" ? "☀️" : "🌙";
+      localStorage.setItem("workspace_theme", next);
     });
   }
 
@@ -54,18 +124,14 @@ class AscentApp {
       });
     });
 
-    document.getElementById("headerQuickTimer")?.addEventListener("click", () => {
-      this.switchTab("timer");
-    });
-    document.getElementById("dashViewAiBtn")?.addEventListener("click", () => {
-      this.switchTab("ai");
-    });
-    document.getElementById("dashStartPomodoroBtn")?.addEventListener("click", () => {
+    document.getElementById("btnGoToGuide")?.addEventListener("click", () => this.switchTab("guide"));
+    document.getElementById("btnGoToDsa")?.addEventListener("click", () => this.switchTab("dsa"));
+    document.getElementById("overviewStartPomodoro")?.addEventListener("click", () => {
       this.switchTab("timer");
       this.setTimerMode("pomodoro");
       this.timer.start("DSA Deliberate Practice", "DSA");
     });
-    document.getElementById("dashStartInterviewBtn")?.addEventListener("click", () => {
+    document.getElementById("overviewStartInterview")?.addEventListener("click", () => {
       this.switchTab("timer");
       this.setTimerMode("interview");
       this.timer.start("45-Min Google Mock Interview", "Mock");
@@ -79,43 +145,33 @@ class AscentApp {
     document.querySelectorAll(".tab-pane").forEach((pane) => {
       pane.classList.toggle("active", pane.id === `tab-${tabId}`);
     });
-    if (tabId === "dashboard") this.updateDashboard();
-    if (tabId === "dsa") this.renderDsaProblems();
-    if (tabId === "ai") this.renderAiTopics();
+
+    if (tabId === "overview") this.updateOverview();
+    if (tabId === "dsa") this.renderDsaTable();
+    if (tabId === "ai") this.renderAiTable();
     if (tabId === "timer") this.renderSessionHistory();
     if (tabId === "news") this.loadNews();
+    if (tabId === "admin") this.renderAdminPanel();
   }
 
-  // --- DASHBOARD ---
-  initDashboard() {
-    this.updateDashboard();
+  // --- OVERVIEW ---
+  initOverview() {
+    this.updateOverview();
   }
 
-  updateDashboard() {
+  updateOverview() {
     const analytics = StorageManager.calculateAnalytics();
 
-    // Readiness score
-    const readinessElem = document.getElementById("dashReadinessScore");
-    const readinessBar = document.getElementById("dashReadinessBar");
+    const readinessElem = document.getElementById("overviewReadiness");
+    const readinessBar = document.getElementById("overviewReadinessBar");
     if (readinessElem && readinessBar) {
       readinessElem.textContent = `${analytics.readinessScore}%`;
       readinessBar.style.width = `${analytics.readinessScore}%`;
     }
 
-    // Level label
-    const levelElem = document.getElementById("dashReadinessLevel");
-    if (levelElem) {
-      let level = "Beginner • L3 SWE Foundation";
-      if (analytics.readinessScore >= 80) level = "Google Interview Ready • L4/L5 SWE & Senior AI";
-      else if (analytics.readinessScore >= 50) level = "Strong Competency • L4 SWE / AI Specialist";
-      else if (analytics.readinessScore >= 25) level = "Intermediate Progression • L3+ SWE";
-      levelElem.textContent = level;
-    }
-
-    // Hours
-    const totalHoursElem = document.getElementById("dashTotalHours");
-    const todayHoursElem = document.getElementById("dashTodayHours");
-    const todayBar = document.getElementById("dashTodayBar");
+    const totalHoursElem = document.getElementById("overviewTotalHours");
+    const todayHoursElem = document.getElementById("overviewTodayHours");
+    const todayBar = document.getElementById("overviewTodayBar");
     if (totalHoursElem) totalHoursElem.textContent = `${analytics.totalHours}h`;
     if (todayHoursElem) todayHoursElem.textContent = `${analytics.todayHours}h`;
     if (todayBar) {
@@ -123,28 +179,21 @@ class AscentApp {
       todayBar.style.width = `${todayPct}%`;
     }
 
-    // DSA problems
-    const dsaMasteredElem = document.getElementById("dashDsaMastered");
-    const dsaPercentElem = document.getElementById("dashDsaPercent");
-    const dsaBar = document.getElementById("dashDsaBar");
-    if (dsaMasteredElem) dsaMasteredElem.textContent = `${analytics.dsa.mastered} / ${analytics.dsa.total}`;
+    const dsaCountElem = document.getElementById("overviewDsaCount");
+    const dsaPercentElem = document.getElementById("overviewDsaPercent");
+    const dsaBar = document.getElementById("overviewDsaBar");
+    if (dsaCountElem) dsaCountElem.textContent = `${analytics.dsa.mastered} / ${analytics.dsa.total}`;
     if (dsaPercentElem) dsaPercentElem.textContent = `${analytics.dsa.percent}%`;
     if (dsaBar) dsaBar.style.width = `${analytics.dsa.percent}%`;
 
-    // Streak
-    const streakElem = document.getElementById("dashStreak");
+    const streakElem = document.getElementById("overviewStreak");
     if (streakElem) streakElem.textContent = `${analytics.streak} Day${analytics.streak === 1 ? "" : "s"}`;
-
-    // AI progress badge
-    const aiBadge = document.getElementById("dashAiProgressBadge");
-    if (aiBadge) aiBadge.textContent = `${analytics.ai.mastered} / ${analytics.ai.total} Topics`;
   }
 
-  // --- DSA TRACKER ---
-  initDsaTracker() {
-    // Populate topic filter dropdown
+  // --- DSA DIRECTORY ---
+  initDsaDirectory() {
     const topicFilter = document.getElementById("dsaTopicFilter");
-    const customTopic = document.getElementById("customTopic");
+    const custTopic = document.getElementById("custTopic");
     DSA_TOPICS.forEach((t) => {
       const opt1 = document.createElement("option");
       opt1.value = t;
@@ -154,21 +203,19 @@ class AscentApp {
       const opt2 = document.createElement("option");
       opt2.value = t;
       opt2.textContent = t;
-      customTopic?.appendChild(opt2);
+      custTopic?.appendChild(opt2);
     });
 
-    // Event listeners for filters
-    document.getElementById("dsaSearchInput")?.addEventListener("input", () => this.renderDsaProblems());
-    document.getElementById("dsaTopicFilter")?.addEventListener("change", () => this.renderDsaProblems());
-    document.getElementById("dsaDifficultyFilter")?.addEventListener("change", () => this.renderDsaProblems());
-    document.getElementById("dsaStatusFilter")?.addEventListener("change", () => this.renderDsaProblems());
+    document.getElementById("dsaSearchInput")?.addEventListener("input", () => this.renderDsaTable());
+    document.getElementById("dsaTopicFilter")?.addEventListener("change", () => this.renderDsaTable());
+    document.getElementById("dsaDifficultyFilter")?.addEventListener("change", () => this.renderDsaTable());
+    document.getElementById("dsaStatusFilter")?.addEventListener("change", () => this.renderDsaTable());
 
-    // Modal close & save
+    // Modals
     document.getElementById("closeProblemModalBtn")?.addEventListener("click", () => this.closeProblemModal());
-    document.getElementById("modalSaveProblemBtn")?.addEventListener("click", () => this.saveCurrentProblem());
+    document.getElementById("btnModalSaveProblem")?.addEventListener("click", () => this.saveCurrentProblem());
 
-    // Modal start timer
-    document.getElementById("modalStartTimerBtn")?.addEventListener("click", () => {
+    document.getElementById("btnModalStartTimer")?.addEventListener("click", () => {
       if (!this.currentDsaProblem) return;
       this.closeProblemModal();
       this.switchTab("timer");
@@ -176,30 +223,54 @@ class AscentApp {
       this.timer.start(`Solving: ${this.currentDsaProblem.title}`, "DSA");
     });
 
-    // Add custom problem button & form
-    document.getElementById("addNewProblemBtn")?.addEventListener("click", () => {
-      document.getElementById("addCustomModal")?.classList.add("open");
-    });
-    document.getElementById("closeAddCustomModalBtn")?.addEventListener("click", () => {
-      document.getElementById("addCustomModal")?.classList.remove("open");
-    });
-    document.getElementById("cancelAddCustomBtn")?.addEventListener("click", () => {
-      document.getElementById("addCustomModal")?.classList.remove("open");
-    });
+    // Add problem modal
+    const addModal = document.getElementById("addProblemModal");
+    document.getElementById("btnOpenAddProblemModal")?.addEventListener("click", () => addModal?.classList.add("open"));
+    document.getElementById("closeAddProblemBtn")?.addEventListener("click", () => addModal?.classList.remove("open"));
+    document.getElementById("cancelAddProblemBtn")?.addEventListener("click", () => addModal?.classList.remove("open"));
+
     document.getElementById("addCustomProblemForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      this.handleAddCustomProblem();
+      const title = document.getElementById("custTitle")?.value.trim();
+      const topic = document.getElementById("custTopic")?.value;
+      const difficulty = document.getElementById("custDifficulty")?.value;
+      const link = document.getElementById("custLink")?.value.trim();
+      const pattern = document.getElementById("custPattern")?.value.trim();
+      const insight = document.getElementById("custInsight")?.value.trim();
+
+      const problems = StorageManager.getDSAProblems();
+      problems.unshift({
+        id: "custom_" + Date.now(),
+        title,
+        topic,
+        difficulty,
+        link: link || `https://www.google.com/search?q=${encodeURIComponent(title + " leetcode")}`,
+        pattern: pattern || "Algorithmic Pattern",
+        keyInsight: insight || "Follow 8-step framework.",
+        timeComp: "O(N)",
+        spaceComp: "O(1)",
+        status: "todo",
+        completedSteps: [],
+        notes: "",
+        solvedAt: null
+      });
+
+      StorageManager.saveDSAProblems(problems);
+      document.getElementById("addCustomProblemForm")?.reset();
+      addModal?.classList.remove("open");
+      this.renderDsaTable();
+      this.updateOverview();
     });
 
-    this.renderDsaProblems();
+    this.renderDsaTable();
   }
 
-  renderDsaProblems() {
-    const container = document.getElementById("dsaProblemsContainer");
-    if (!container) return;
+  renderDsaTable() {
+    const tbody = document.getElementById("dsaTableBody");
+    if (!tbody) return;
 
     const problems = StorageManager.getDSAProblems();
-    const searchQuery = (document.getElementById("dsaSearchInput")?.value || "").toLowerCase().trim();
+    const query = (document.getElementById("dsaSearchInput")?.value || "").toLowerCase().trim();
     const topic = document.getElementById("dsaTopicFilter")?.value || "all";
     const difficulty = document.getElementById("dsaDifficultyFilter")?.value || "all";
     const status = document.getElementById("dsaStatusFilter")?.value || "all";
@@ -208,62 +279,39 @@ class AscentApp {
       if (topic !== "all" && p.topic !== topic) return false;
       if (difficulty !== "all" && p.difficulty !== difficulty) return false;
       if (status !== "all" && p.status !== status) return false;
-      if (searchQuery) {
-        const matchTitle = p.title.toLowerCase().includes(searchQuery);
-        const matchPattern = (p.pattern || "").toLowerCase().includes(searchQuery);
-        const matchTopic = p.topic.toLowerCase().includes(searchQuery);
+      if (query) {
+        const matchTitle = p.title.toLowerCase().includes(query);
+        const matchPattern = (p.pattern || "").toLowerCase().includes(query);
+        const matchTopic = p.topic.toLowerCase().includes(query);
         if (!matchTitle && !matchPattern && !matchTopic) return false;
       }
       return true;
     });
 
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div style="padding: 2.5rem; text-align: center; color: var(--text-secondary);">
-          <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No matching problems found.</p>
-          <small>Try clearing filters or add your own custom problem!</small>
-        </div>
-      `;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching problems found.</td></tr>`;
       return;
     }
 
-    container.innerHTML = filtered.map((prob) => {
-      const diffClass = prob.difficulty === "Easy" ? "badge-easy" : prob.difficulty === "Medium" ? "badge-medium" : "badge-hard";
-      const statusIcon = prob.status === "mastered" ? "✓" : prob.status === "in_progress" ? "◐" : prob.status === "needs_revision" ? "↺" : "";
-      const stepCount = (prob.completedSteps || []).length;
+    tbody.innerHTML = filtered.map((p) => {
+      const stepCount = (p.completedSteps || []).length;
+      const diffClass = p.difficulty === "Easy" ? "badge-easy" : p.difficulty === "Medium" ? "badge-medium" : "badge-hard";
+      const statusLabel = p.status.replace("_", " ");
 
       return `
-        <div class="problem-row" data-id="${prob.id}">
-          <div class="problem-main-info">
-            <div class="problem-status-indicator ${prob.status}">${statusIcon}</div>
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <span class="problem-title-text">${prob.title}</span>
-                <span class="badge ${diffClass}">${prob.difficulty}</span>
-                ${prob.googleFreq ? `<span class="badge badge-google">${prob.googleFreq}</span>` : ""}
-              </div>
-              <div class="problem-meta">
-                <span>📁 ${prob.topic}</span>
-                ${prob.pattern ? `<span>• 💡 ${prob.pattern}</span>` : ""}
-                <span>• ⏱ ${prob.timeComp || "O(N)"}</span>
-              </div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div class="problem-steps-mini" title="${stepCount}/8 Framework steps completed">
-              ${Array.from({ length: 8 }).map((_, i) => `<span class="step-dot ${i < stepCount ? "done" : ""}"></span>`).join("")}
-              <span style="font-size: 0.72rem; color: var(--text-secondary); margin-left: 4px;">${stepCount}/8</span>
-            </div>
-            <span class="badge badge-status status-${prob.status}">
-              ${prob.status.replace("_", " ").toUpperCase()}
-            </span>
-          </div>
-        </div>
+        <tr class="clickable" data-id="${p.id}">
+          <td><span class="badge badge-status-${p.status}">${statusLabel}</span></td>
+          <td style="font-weight: 500;">${p.title}</td>
+          <td style="color: var(--text-secondary);">${p.topic}</td>
+          <td><span class="badge ${diffClass}">${p.difficulty}</span></td>
+          <td style="color: var(--text-secondary);">${p.pattern || "—"}</td>
+          <td style="color: var(--text-muted); font-size: 12px;">${p.timeComp || "O(N)"} / ${p.spaceComp || "O(1)"}</td>
+          <td style="font-weight: 500;">${stepCount}/8</td>
+        </tr>
       `;
     }).join("");
 
-    // Attach row click listeners
-    container.querySelectorAll(".problem-row").forEach((row) => {
+    tbody.querySelectorAll("tr.clickable").forEach((row) => {
       row.addEventListener("click", () => {
         const id = row.getAttribute("data-id");
         this.openProblemModal(id);
@@ -271,9 +319,9 @@ class AscentApp {
     });
   }
 
-  openProblemModal(problemId) {
+  openProblemModal(id) {
     const problems = StorageManager.getDSAProblems();
-    const problem = problems.find((p) => p.id === problemId);
+    const problem = problems.find((p) => p.id === id);
     if (!problem) return;
     this.currentDsaProblem = problem;
 
@@ -284,270 +332,187 @@ class AscentApp {
     diffBadge.textContent = problem.difficulty;
     diffBadge.className = `badge ${problem.difficulty === "Easy" ? "badge-easy" : problem.difficulty === "Medium" ? "badge-medium" : "badge-hard"}`;
 
-    document.getElementById("modalProblemGoogleFreq").textContent = problem.googleFreq || "Google High-Freq";
-    document.getElementById("modalProblemLink").href = problem.link || `https://www.google.com/search?q=${encodeURIComponent(problem.title + " leetcode")}`;
+    document.getElementById("modalProblemLink").href = problem.link || "#";
     document.getElementById("modalProblemPattern").textContent = problem.pattern || "Pattern recognition";
-    document.getElementById("modalProblemInsight").textContent = problem.keyInsight || "Identify optimal invariants and constraints.";
+    document.getElementById("modalProblemInsight").textContent = problem.keyInsight || "Follow optimal invariant.";
     document.getElementById("modalProblemTimeComp").textContent = problem.timeComp || "O(N)";
     document.getElementById("modalProblemSpaceComp").textContent = problem.spaceComp || "O(1)";
 
-    // Problem status & notes
     document.getElementById("modalProblemStatus").value = problem.status || "todo";
     document.getElementById("modalProblemNotes").value = problem.notes || "";
 
-    // 8-Step framework checklist
-    const completedSet = new Set(problem.completedSteps || []);
-    const checklistContainer = document.getElementById("modalStepsChecklist");
-    checklistContainer.innerHTML = DEFAULT_PROBLEM_STEPS.map((step) => {
-      const checked = completedSet.has(step.id);
-      return `
-        <div class="checklist-step-item">
-          <input type="checkbox" class="step-checkbox" data-step-id="${step.id}" ${checked ? "checked" : ""}>
-          <div class="step-content">
-            <div class="step-header-title">${step.title}</div>
-            <div class="step-description">${step.desc}</div>
-          </div>
+    const completed = new Set(problem.completedSteps || []);
+    const list = document.getElementById("modalStepsList");
+    list.innerHTML = DEFAULT_PROBLEM_STEPS.map((s) => `
+      <div style="display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle);">
+        <input type="checkbox" class="step-check" data-step="${s.id}" ${completed.has(s.id) ? "checked" : ""}>
+        <div>
+          <div style="font-weight: 500; font-size: 13px;">${s.title}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${s.desc}</div>
         </div>
-      `;
-    }).join("");
+      </div>
+    `).join("");
 
-    this.updateStepsCounter();
+    const updateCounter = () => {
+      const c = list.querySelectorAll(".step-check:checked").length;
+      document.getElementById("modalStepsCount").textContent = `${c}/8 Complete`;
+    };
+    updateCounter();
 
-    // Checkbox change handlers
-    checklistContainer.querySelectorAll(".step-checkbox").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        this.updateStepsCounter();
-      });
-    });
+    list.querySelectorAll(".step-check").forEach((cb) => cb.addEventListener("change", updateCounter));
 
-    document.getElementById("problemModal")?.classList.add("open");
-  }
-
-  updateStepsCounter() {
-    const checkboxes = document.querySelectorAll("#modalStepsChecklist .step-checkbox:checked");
-    const count = checkboxes.length;
-    document.getElementById("modalStepsCounter").textContent = `${count}/8 Complete`;
-
-    // Auto-suggest mastered if all 8 steps completed
-    const statusSelect = document.getElementById("modalProblemStatus");
-    if (count === 8 && statusSelect.value === "todo") {
-      statusSelect.value = "mastered";
-    }
+    document.getElementById("problemDetailModal")?.classList.add("open");
   }
 
   saveCurrentProblem() {
     if (!this.currentDsaProblem) return;
     const problems = StorageManager.getDSAProblems();
-    const index = problems.findIndex((p) => p.id === this.currentDsaProblem.id);
-    if (index === -1) return;
+    const idx = problems.findIndex((p) => p.id === this.currentDsaProblem.id);
+    if (idx === -1) return;
 
-    // Collect completed steps
-    const checkedSteps = [];
-    document.querySelectorAll("#modalStepsChecklist .step-checkbox:checked").forEach((cb) => {
-      checkedSteps.push(cb.getAttribute("data-step-id"));
+    const checked = [];
+    document.querySelectorAll("#modalStepsList .step-check:checked").forEach((cb) => {
+      checked.push(cb.getAttribute("data-step"));
     });
 
     const status = document.getElementById("modalProblemStatus").value;
     const notes = document.getElementById("modalProblemNotes").value;
 
-    problems[index] = {
-      ...problems[index],
-      completedSteps: checkedSteps,
+    problems[idx] = {
+      ...problems[idx],
+      completedSteps: checked,
       status,
       notes,
-      solvedAt: status === "mastered" ? (problems[index].solvedAt || Date.now()) : problems[index].solvedAt
+      solvedAt: status === "mastered" ? (problems[idx].solvedAt || Date.now()) : problems[idx].solvedAt
     };
 
     StorageManager.saveDSAProblems(problems);
     this.closeProblemModal();
-    this.renderDsaProblems();
-    this.updateDashboard();
+    this.renderDsaTable();
+    this.updateOverview();
   }
 
   closeProblemModal() {
-    document.getElementById("problemModal")?.classList.remove("open");
+    document.getElementById("problemDetailModal")?.classList.remove("open");
     this.currentDsaProblem = null;
   }
 
-  handleAddCustomProblem() {
-    const title = document.getElementById("customTitle")?.value.trim();
-    if (!title) return;
-
-    const topic = document.getElementById("customTopic")?.value;
-    const difficulty = document.getElementById("customDifficulty")?.value;
-    const link = document.getElementById("customLink")?.value.trim();
-    const pattern = document.getElementById("customPattern")?.value.trim();
-    const insight = document.getElementById("customInsight")?.value.trim();
-
-    const problems = StorageManager.getDSAProblems();
-    const newProblem = {
-      id: "custom_" + Date.now(),
-      title,
-      topic,
-      difficulty,
-      googleFreq: "Custom Prep",
-      link: link || `https://www.google.com/search?q=${encodeURIComponent(title + " leetcode")}`,
-      pattern: pattern || "Algorithmic Pattern",
-      keyInsight: insight || "Follow 8-step framework.",
-      timeComp: "O(N)",
-      spaceComp: "O(1)",
-      status: "todo",
-      completedSteps: [],
-      notes: "",
-      solvedAt: null
-    };
-
-    problems.unshift(newProblem);
-    StorageManager.saveDSAProblems(problems);
-    document.getElementById("addCustomProblemForm")?.reset();
-    document.getElementById("addCustomModal")?.classList.remove("open");
-    this.renderDsaProblems();
-    this.updateDashboard();
-  }
-
-  // --- AI ROADMAP ---
-  initAiRoadmap() {
-    const moduleFilter = document.getElementById("aiModuleFilter");
+  // --- AI CURRICULUM ---
+  initAiCurriculum() {
+    const modFilter = document.getElementById("aiModuleFilter");
     AI_MODULES.forEach((m) => {
       const opt = document.createElement("option");
       opt.value = m;
       opt.textContent = m;
-      moduleFilter?.appendChild(opt);
+      modFilter?.appendChild(opt);
     });
 
-    document.getElementById("aiSearchInput")?.addEventListener("input", () => this.renderAiTopics());
-    document.getElementById("aiModuleFilter")?.addEventListener("change", () => this.renderAiTopics());
-    document.getElementById("aiStatusFilter")?.addEventListener("change", () => this.renderAiTopics());
+    document.getElementById("aiSearchInput")?.addEventListener("input", () => this.renderAiTable());
+    document.getElementById("aiModuleFilter")?.addEventListener("change", () => this.renderAiTable());
+    document.getElementById("aiStatusFilter")?.addEventListener("change", () => this.renderAiTable());
 
-    document.getElementById("closeAiTopicModalBtn")?.addEventListener("click", () => this.closeAiTopicModal());
-    document.getElementById("modalSaveAiTopicBtn")?.addEventListener("click", () => this.saveCurrentAiTopic());
+    document.getElementById("closeAiTopicModalBtn")?.addEventListener("click", () => this.closeAiModal());
+    document.getElementById("btnModalSaveAi")?.addEventListener("click", () => this.saveCurrentAiTopic());
 
-    document.getElementById("modalStartAiTimerBtn")?.addEventListener("click", () => {
+    document.getElementById("btnModalStartAiTimer")?.addEventListener("click", () => {
       if (!this.currentAiTopic) return;
-      this.closeAiTopicModal();
+      this.closeAiModal();
       this.switchTab("timer");
       this.setTimerMode("pomodoro");
       this.timer.start(`AI Study: ${this.currentAiTopic.title}`, "AI");
     });
 
-    this.renderAiTopics();
+    this.renderAiTable();
   }
 
-  renderAiTopics() {
-    const container = document.getElementById("aiTopicsContainer");
-    if (!container) return;
+  renderAiTable() {
+    const tbody = document.getElementById("aiTableBody");
+    if (!tbody) return;
 
     const topics = StorageManager.getAITopics();
-    const searchQuery = (document.getElementById("aiSearchInput")?.value || "").toLowerCase().trim();
-    const moduleVal = document.getElementById("aiModuleFilter")?.value || "all";
-    const statusVal = document.getElementById("aiStatusFilter")?.value || "all";
+    const query = (document.getElementById("aiSearchInput")?.value || "").toLowerCase().trim();
+    const mod = document.getElementById("aiModuleFilter")?.value || "all";
+    const status = document.getElementById("aiStatusFilter")?.value || "all";
 
     const filtered = topics.filter((t) => {
-      if (moduleVal !== "all" && t.module !== moduleVal) return false;
-      if (statusVal !== "all" && t.status !== statusVal) return false;
-      if (searchQuery) {
-        const matchTitle = t.title.toLowerCase().includes(searchQuery);
-        const matchModule = t.module.toLowerCase().includes(searchQuery);
-        const matchConcepts = (t.keyConcepts || "").toLowerCase().includes(searchQuery);
-        if (!matchTitle && !matchModule && !matchConcepts) return false;
+      if (mod !== "all" && t.module !== mod) return false;
+      if (status !== "all" && t.status !== status) return false;
+      if (query) {
+        const matchTitle = t.title.toLowerCase().includes(query);
+        const matchMod = t.module.toLowerCase().includes(query);
+        const matchConcepts = (t.keyConcepts || "").toLowerCase().includes(query);
+        if (!matchTitle && !matchMod && !matchConcepts) return false;
       }
       return true;
     });
 
     if (filtered.length === 0) {
-      container.innerHTML = `
-        <div style="padding: 2.5rem; text-align: center; color: var(--text-secondary);">
-          <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No matching AI topics found.</p>
-        </div>
-      `;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No matching AI topics found.</td></tr>`;
       return;
     }
 
-    container.innerHTML = filtered.map((topic) => {
-      const diffClass = topic.difficulty === "Easy" ? "badge-easy" : topic.difficulty === "Medium" ? "badge-medium" : "badge-hard";
-      const stepCount = (topic.completedSteps || []).length;
-      const statusIcon = topic.status === "mastered" ? "✓" : topic.status === "in_progress" ? "◐" : "";
+    tbody.innerHTML = filtered.map((t) => {
+      const diffClass = t.difficulty === "Easy" ? "badge-easy" : t.difficulty === "Medium" ? "badge-medium" : "badge-hard";
+      const stepCount = (t.completedSteps || []).length;
 
       return `
-        <div class="problem-row" data-id="${topic.id}">
-          <div class="problem-main-info">
-            <div class="problem-status-indicator ${topic.status}">${statusIcon}</div>
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <span class="problem-title-text">${topic.title}</span>
-                <span class="badge ${diffClass}">${topic.difficulty}</span>
-                <span class="badge badge-google">${topic.importance || "Core"}</span>
-              </div>
-              <div class="problem-meta">
-                <span>📚 ${topic.module}</span>
-              </div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <div class="problem-steps-mini" title="${stepCount}/5 AI Mastery steps completed">
-              ${Array.from({ length: 5 }).map((_, i) => `<span class="step-dot ${i < stepCount ? "done" : ""}"></span>`).join("")}
-              <span style="font-size: 0.72rem; color: var(--text-secondary); margin-left: 4px;">${stepCount}/5</span>
-            </div>
-            <span class="badge badge-status status-${topic.status}">
-              ${topic.status.replace("_", " ").toUpperCase()}
-            </span>
-          </div>
-        </div>
+        <tr class="clickable" data-id="${t.id}">
+          <td><span class="badge badge-status-${t.status}">${t.status.replace("_", " ")}</span></td>
+          <td style="font-weight: 500;">${t.title}</td>
+          <td style="color: var(--text-secondary);">${t.module}</td>
+          <td><span class="badge ${diffClass}">${t.difficulty}</span></td>
+          <td style="color: var(--text-secondary); font-size: 12px; max-width: 320px;">${t.practicalExercise || "—"}</td>
+          <td style="font-weight: 500;">${stepCount}/5</td>
+        </tr>
       `;
     }).join("");
 
-    container.querySelectorAll(".problem-row").forEach((row) => {
+    tbody.querySelectorAll("tr.clickable").forEach((row) => {
       row.addEventListener("click", () => {
         const id = row.getAttribute("data-id");
-        this.openAiTopicModal(id);
+        this.openAiModal(id);
       });
     });
   }
 
-  openAiTopicModal(topicId) {
+  openAiModal(id) {
     const topics = StorageManager.getAITopics();
-    const topic = topics.find((t) => t.id === topicId);
+    const topic = topics.find((t) => t.id === id);
     if (!topic) return;
     this.currentAiTopic = topic;
 
-    document.getElementById("modalAiTopicTitle").textContent = topic.title;
-    document.getElementById("modalAiTopicModule").textContent = topic.module;
-    document.getElementById("modalAiTopicImportance").textContent = topic.importance || "Core FAANG";
-
-    const diffBadge = document.getElementById("modalAiTopicDifficulty");
+    document.getElementById("modalAiTitle").textContent = topic.title;
+    document.getElementById("modalAiModule").textContent = topic.module;
+    
+    const diffBadge = document.getElementById("modalAiDifficulty");
     diffBadge.textContent = topic.difficulty;
     diffBadge.className = `badge ${topic.difficulty === "Easy" ? "badge-easy" : topic.difficulty === "Medium" ? "badge-medium" : "badge-hard"}`;
 
-    document.getElementById("modalAiTopicConcepts").textContent = topic.keyConcepts || "Master core foundations.";
-    document.getElementById("modalAiTopicExercise").textContent = topic.practicalExercise || "Build PyTorch implementation.";
+    document.getElementById("modalAiConcepts").textContent = topic.keyConcepts || "Foundational concepts.";
+    document.getElementById("modalAiExercise").textContent = topic.practicalExercise || "Implementation details.";
 
-    document.getElementById("modalAiTopicStatus").value = topic.status || "todo";
-    document.getElementById("modalAiTopicNotes").value = topic.notes || "";
+    document.getElementById("modalAiStatus").value = topic.status || "todo";
+    document.getElementById("modalAiNotes").value = topic.notes || "";
 
-    const completedSet = new Set(topic.completedSteps || []);
-    const checklistContainer = document.getElementById("modalAiStepsChecklist");
-    checklistContainer.innerHTML = DEFAULT_AI_STEPS.map((step) => {
-      const checked = completedSet.has(step.id);
-      return `
-        <div class="checklist-step-item">
-          <input type="checkbox" class="step-checkbox" data-step-id="${step.id}" ${checked ? "checked" : ""}>
-          <div class="step-content">
-            <div class="step-header-title">${step.title}</div>
-            <div class="step-description">${step.desc}</div>
-          </div>
+    const completed = new Set(topic.completedSteps || []);
+    const list = document.getElementById("modalAiStepsList");
+    list.innerHTML = DEFAULT_AI_STEPS.map((s) => `
+      <div style="display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle);">
+        <input type="checkbox" class="ai-step-check" data-step="${s.id}" ${completed.has(s.id) ? "checked" : ""}>
+        <div>
+          <div style="font-weight: 500; font-size: 13px;">${s.title}</div>
+          <div style="font-size: 12px; color: var(--text-secondary);">${s.desc}</div>
         </div>
-      `;
-    }).join("");
+      </div>
+    `).join("");
 
-    const updateAiStepsCounter = () => {
-      const count = checklistContainer.querySelectorAll(".step-checkbox:checked").length;
-      document.getElementById("modalAiStepsCounter").textContent = `${count}/5 Complete`;
+    const updateCounter = () => {
+      const c = list.querySelectorAll(".ai-step-check:checked").length;
+      document.getElementById("modalAiStepsCount").textContent = `${c}/5 Complete`;
     };
-    updateAiStepsCounter();
+    updateCounter();
 
-    checklistContainer.querySelectorAll(".step-checkbox").forEach((cb) => {
-      cb.addEventListener("change", updateAiStepsCounter);
-    });
+    list.querySelectorAll(".ai-step-check").forEach((cb) => cb.addEventListener("change", updateCounter));
 
     document.getElementById("aiTopicModal")?.classList.add("open");
   }
@@ -558,36 +523,35 @@ class AscentApp {
     const idx = topics.findIndex((t) => t.id === this.currentAiTopic.id);
     if (idx === -1) return;
 
-    const checkedSteps = [];
-    document.querySelectorAll("#modalAiStepsChecklist .step-checkbox:checked").forEach((cb) => {
-      checkedSteps.push(cb.getAttribute("data-step-id"));
+    const checked = [];
+    document.querySelectorAll("#modalAiStepsList .ai-step-check:checked").forEach((cb) => {
+      checked.push(cb.getAttribute("data-step"));
     });
 
-    const status = document.getElementById("modalAiTopicStatus").value;
-    const notes = document.getElementById("modalAiTopicNotes").value;
+    const status = document.getElementById("modalAiStatus").value;
+    const notes = document.getElementById("modalAiNotes").value;
 
     topics[idx] = {
       ...topics[idx],
-      completedSteps: checkedSteps,
+      completedSteps: checked,
       status,
       notes,
       solvedAt: status === "mastered" ? (topics[idx].solvedAt || Date.now()) : topics[idx].solvedAt
     };
 
     StorageManager.saveAITopics(topics);
-    this.closeAiTopicModal();
-    this.renderAiTopics();
-    this.updateDashboard();
+    this.closeAiModal();
+    this.renderAiTable();
+    this.updateOverview();
   }
 
-  closeAiTopicModal() {
+  closeAiModal() {
     document.getElementById("aiTopicModal")?.classList.remove("open");
     this.currentAiTopic = null;
   }
 
-  // --- STUDY HOURS & TIMER ---
+  // --- STUDY TRACKER & TIMER ---
   initTimerControls() {
-    // Mode switcher buttons
     document.querySelectorAll(".timer-mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const mode = btn.getAttribute("data-mode");
@@ -604,17 +568,17 @@ class AscentApp {
     startBtn?.addEventListener("click", () => {
       const topic = document.getElementById("timerActiveTopicText")?.textContent || "DSA Deliberate Practice";
       this.timer.start(topic, "DSA");
-      this.updateTimerButtonStates("running");
+      this.updateTimerBtnState("running");
     });
 
     pauseBtn?.addEventListener("click", () => {
       this.timer.pause();
-      this.updateTimerButtonStates("paused");
+      this.updateTimerBtnState("paused");
     });
 
     resumeBtn?.addEventListener("click", () => {
       this.timer.resume();
-      this.updateTimerButtonStates("running");
+      this.updateTimerBtnState("running");
     });
 
     stopBtn?.addEventListener("click", () => {
@@ -626,21 +590,22 @@ class AscentApp {
           category: this.timer.sessionCategory
         });
       }
-      this.updateTimerButtonStates("idle");
+      this.updateTimerBtnState("idle");
       this.renderSessionHistory();
-      this.updateDashboard();
+      this.updateOverview();
     });
 
     resetBtn?.addEventListener("click", () => {
       this.timer.reset();
-      this.updateTimerButtonStates("idle");
+      this.updateTimerBtnState("idle");
     });
 
-    document.getElementById("timerChangeTopicBtn")?.addEventListener("click", () => {
-      const newTopic = prompt("Enter what you are practicing:", document.getElementById("timerActiveTopicText")?.textContent);
-      if (newTopic && newTopic.trim()) {
-        document.getElementById("timerActiveTopicText").textContent = newTopic.trim();
-        this.timer.sessionTopic = newTopic.trim();
+    document.getElementById("btnChangeTimerTopic")?.addEventListener("click", () => {
+      const current = document.getElementById("timerActiveTopicText")?.textContent;
+      const res = prompt("Enter active practice task:", current);
+      if (res && res.trim()) {
+        document.getElementById("timerActiveTopicText").textContent = res.trim();
+        this.timer.sessionTopic = res.trim();
       }
     });
 
@@ -652,20 +617,15 @@ class AscentApp {
       b.classList.toggle("active", b.getAttribute("data-mode") === mode);
     });
 
-    if (mode === "pomodoro") {
-      this.timer.setMode("pomodoro", 25);
-    } else if (mode === "pomodoro50") {
-      this.timer.setMode("pomodoro", 50);
-    } else if (mode === "interview") {
-      this.timer.setMode("interview");
-    } else {
-      this.timer.setMode("stopwatch");
-    }
+    if (mode === "pomodoro") this.timer.setMode("pomodoro", 25);
+    else if (mode === "pomodoro50") this.timer.setMode("pomodoro", 50);
+    else if (mode === "interview") this.timer.setMode("interview");
+    else this.timer.setMode("stopwatch");
 
-    this.updateTimerButtonStates("idle");
+    this.updateTimerBtnState("idle");
   }
 
-  updateTimerButtonStates(status) {
+  updateTimerBtnState(status) {
     const startBtn = document.getElementById("timerStartBtn");
     const pauseBtn = document.getElementById("timerPauseBtn");
     const resumeBtn = document.getElementById("timerResumeBtn");
@@ -691,200 +651,270 @@ class AscentApp {
 
   handleTimerTick(tickData) {
     const clock = document.getElementById("mainClockDisplay");
-    const headerClock = document.getElementById("headerTimerDisplay");
-    const headerPulse = document.getElementById("headerTimerPulse");
-    const headerLabel = document.getElementById("headerTimerLabel");
-
     if (clock) clock.textContent = tickData.formattedTime;
-    if (headerClock) headerClock.textContent = tickData.formattedTime;
-
-    if (headerPulse) {
-      headerPulse.classList.toggle("active", tickData.status === "running");
-    }
-    if (headerLabel) {
-      headerLabel.textContent = tickData.status === "running" ? `(${tickData.mode})` : `(${tickData.status})`;
-    }
   }
 
   handleTimerComplete(completeData) {
-    alert(`🎉 Focus Session Finished!\n\nYou completed ${Math.round(completeData.durationSeconds / 60)} minutes of ${completeData.topic}! Keep up the Google mindset.`);
+    alert(`Focus session complete: ${Math.round(completeData.durationSeconds / 60)} minutes logged for ${completeData.topic}.`);
     StorageManager.addSession(completeData);
-    this.updateTimerButtonStates("idle");
+    this.updateTimerBtnState("idle");
     this.renderSessionHistory();
-    this.updateDashboard();
+    this.updateOverview();
   }
 
   renderSessionHistory() {
-    const container = document.getElementById("sessionHistoryContainer");
+    const container = document.getElementById("sessionHistoryTableContainer");
     if (!container) return;
+
     const sessions = StorageManager.getSessions();
     const analytics = StorageManager.calculateAnalytics();
 
-    const totalText = document.getElementById("timerTotalHoursLoggedText");
-    if (totalText) totalText.textContent = `${analytics.totalHours} Hours`;
+    const totalElem = document.getElementById("timerTotalRecorded");
+    if (totalElem) totalElem.textContent = `${analytics.totalHours}h`;
 
     if (sessions.length === 0) {
-      container.innerHTML = `
-        <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
-          <p>No study sessions logged yet. Hit "Start Focus" to record your deep work hours!</p>
-        </div>
-      `;
+      container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">No recorded study sessions yet. Click Start Session to log practice hours.</div>`;
       return;
     }
 
     container.innerHTML = `
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary); text-align: left;">
-              <th style="padding: 0.6rem 0.75rem;">Date & Time</th>
-              <th style="padding: 0.6rem 0.75rem;">Category</th>
-              <th style="padding: 0.6rem 0.75rem;">Focus Topic</th>
-              <th style="padding: 0.6rem 0.75rem;">Duration</th>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Category</th>
+            <th>Task Topic</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sessions.slice(0, 15).map((s) => `
+            <tr>
+              <td style="color: var(--text-secondary); font-size: 12px;">${new Date(s.timestamp).toLocaleString()}</td>
+              <td><span class="badge" style="background-color: var(--bg-surface-hover);">${s.category}</span></td>
+              <td style="font-weight: 500;">${s.topic}</td>
+              <td style="color: var(--google-green); font-weight: 500;">${s.durationMinutes} min</td>
             </tr>
-          </thead>
-          <tbody>
-            ${sessions.slice(0, 15).map((s) => `
-              <tr style="border-bottom: 1px solid var(--border-subtle);">
-                <td style="padding: 0.6rem 0.75rem; color: var(--text-secondary);">${new Date(s.timestamp).toLocaleString()}</td>
-                <td style="padding: 0.6rem 0.75rem;"><span class="badge badge-google">${s.category}</span></td>
-                <td style="padding: 0.6rem 0.75rem; font-weight: 600;">${s.topic}</td>
-                <td style="padding: 0.6rem 0.75rem; color: var(--google-green); font-weight: 700;">${s.durationMinutes} min</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
+          `).join("")}
+        </tbody>
+      </table>
     `;
   }
 
-  // --- DAILY GOOGLE & AI NEWS ---
-  initDailyNews() {
-    document.getElementById("refreshNewsBtn")?.addEventListener("click", () => {
-      this.loadNews(true);
-    });
+  // --- INDUSTRY NEWS ---
+  initIndustryNews() {
+    document.getElementById("refreshNewsBtn")?.addEventListener("click", () => this.loadNews(true));
 
-    document.querySelectorAll(".news-category-btn").forEach((btn) => {
+    document.querySelectorAll(".news-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".news-category-btn").forEach((b) => {
+        document.querySelectorAll(".news-filter-btn").forEach((b) => {
           b.classList.remove("active", "btn-primary");
           b.classList.add("btn-outline");
         });
         btn.classList.add("active", "btn-primary");
         btn.classList.remove("btn-outline");
-        const category = btn.getAttribute("data-category");
-        this.renderNews(category);
+        const cat = btn.getAttribute("data-cat");
+        this.renderNews(cat);
       });
     });
 
     this.loadNews();
   }
 
-  async loadNews(forceRefresh = false) {
-    const container = document.getElementById("newsFeedContainer");
-    if (container && (!this.cachedNewsItems || forceRefresh)) {
-      container.innerHTML = `
-        <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-secondary);">
-          <p>📡 Fetching daily Google & AI updates...</p>
-        </div>
-      `;
+  async loadNews(force = false) {
+    const container = document.getElementById("newsListContainer");
+    if (container && (!this.cachedNewsItems || force)) {
+      container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted);">Fetching Google & AI updates...</div>`;
     }
 
     try {
-      this.cachedNewsItems = await this.newsService.fetchAllNews(forceRefresh);
-      const activeBtn = document.querySelector(".news-category-btn.active");
-      const category = activeBtn ? activeBtn.getAttribute("data-category") : "all";
-      this.renderNews(category);
-    } catch (e) {
-      console.error("Error loading news:", e);
-      if (container) {
-        container.innerHTML = `<div style="padding: 2rem; color: var(--text-secondary);">Unable to load live news right now.</div>`;
-      }
+      this.cachedNewsItems = await this.newsService.fetchAllNews(force);
+      const activeBtn = document.querySelector(".news-filter-btn.active");
+      const cat = activeBtn ? activeBtn.getAttribute("data-cat") : "all";
+      this.renderNews(cat);
+    } catch {
+      if (container) container.innerHTML = `<div style="padding: 24px; color: var(--text-muted);">Unable to load feed. Check connection.</div>`;
     }
   }
 
   renderNews(category = "all") {
-    const container = document.getElementById("newsFeedContainer");
+    const container = document.getElementById("newsListContainer");
     if (!container || !this.cachedNewsItems) return;
 
-    const filtered = this.cachedNewsItems.filter((item) => {
-      if (category === "all") return true;
-      return item.category === category;
-    });
+    const filtered = this.cachedNewsItems.filter((i) => category === "all" || i.category === category);
 
     container.innerHTML = filtered.map((item) => `
-      <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-card">
-        <div>
-          <div class="news-card-header">
-            <span class="news-source-tag">${item.source}</span>
-            <span class="news-pub-date">${item.pubDate}</span>
-          </div>
-          <h3 class="news-title">${item.title}</h3>
-          <p class="news-snippet">${item.snippet}</p>
+      <div class="news-item">
+        <div class="news-meta">${item.source} • ${item.pubDate}</div>
+        <div class="news-title">
+          <a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>
         </div>
-        <div class="news-footer-link">
-          <span>Read Full Article</span>
-          <span>→</span>
-        </div>
-      </a>
+        <div class="news-desc">${item.snippet}</div>
+      </div>
     `).join("");
   }
 
-  // --- SETTINGS & BACKUP ---
-  initSettingsAndBackup() {
+  // --- ADMINISTRATION & SECURITY ---
+  initAdminAndSecurity() {
+    // Change passkey
+    document.getElementById("changePasskeyForm")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const current = document.getElementById("currentPasskeyInput")?.value;
+      const next = document.getElementById("newPasskeyInput")?.value;
+
+      if (current !== AuthService.getMasterPasskey()) {
+        alert("Current master passkey does not match.");
+        return;
+      }
+
+      if (AuthService.setMasterPasskey(next)) {
+        alert("Master passkey updated successfully. Keep this secret.");
+        document.getElementById("changePasskeyForm")?.reset();
+      }
+    });
+
+    // Generate guest token
+    document.getElementById("btnGenerateGuestToken")?.addEventListener("click", () => {
+      const label = prompt("Enter an identifier for this guest (e.g. Mentor, Peer, Recruiter):", "Guest");
+      if (label && label.trim()) {
+        const token = AuthService.generateGuestToken(label.trim());
+        alert(`New Authorized Access Token Generated:\n\n${token}\n\nShare this token with ${label} to allow them access.`);
+        this.renderAdminPanel();
+      }
+    });
+
+    // Targets form
     const settings = StorageManager.getSettings();
-    const dailyInput = document.getElementById("settingsDailyGoal");
-    const careerInput = document.getElementById("settingsCareerGoal");
+    const dailyInput = document.getElementById("dailyTargetHoursInput");
+    const careerInput = document.getElementById("careerTargetHoursInput");
 
     if (dailyInput) dailyInput.value = settings.dailyTargetHours || 4;
     if (careerInput) careerInput.value = settings.careerGoalHours || 300;
 
-    document.getElementById("settingsForm")?.addEventListener("submit", (e) => {
+    document.getElementById("studyTargetsForm")?.addEventListener("submit", (e) => {
       e.preventDefault();
-      const newDaily = parseFloat(dailyInput.value) || 4;
-      const newCareer = parseFloat(careerInput.value) || 300;
+      const daily = parseFloat(dailyInput?.value) || 4;
+      const career = parseFloat(careerInput?.value) || 300;
 
       StorageManager.saveSettings({
         ...settings,
-        dailyTargetHours: newDaily,
-        careerGoalHours: newCareer
+        dailyTargetHours: daily,
+        careerGoalHours: career
       });
 
-      alert("Settings saved successfully!");
-      this.updateDashboard();
+      alert("Study targets saved.");
+      this.updateOverview();
     });
 
     // Export backup
-    document.getElementById("exportDataBtn")?.addEventListener("click", () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(StorageManager.exportBackup());
-      const downloadAnchor = document.createElement("a");
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `ascent_faang_prep_backup_${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+    document.getElementById("btnExportBackup")?.addEventListener("click", () => {
+      const str = "data:text/json;charset=utf-8," + encodeURIComponent(StorageManager.exportBackup());
+      const a = document.createElement("a");
+      a.href = str;
+      a.download = `workspace_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     });
 
     // Import backup
-    document.getElementById("importDataInput")?.addEventListener("change", (e) => {
+    document.getElementById("importBackupInput")?.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const success = StorageManager.importBackup(event.target.result);
-        if (success) {
-          alert("Backup restored successfully!");
+      const r = new FileReader();
+      r.onload = (ev) => {
+        if (StorageManager.importBackup(ev.target.result)) {
+          alert("Backup successfully restored.");
           window.location.reload();
         } else {
-          alert("Failed to parse backup JSON. Please check the file.");
+          alert("Failed to parse backup JSON file.");
         }
       };
-      reader.readAsText(file);
+      r.readAsText(file);
     });
+
+    this.renderAdminPanel();
+  }
+
+  renderAdminPanel() {
+    // Render guest tokens
+    const tokenContainer = document.getElementById("guestTokenListContainer");
+    if (tokenContainer) {
+      const tokens = AuthService.getGuestTokens();
+      if (tokens.length === 0) {
+        tokenContainer.innerHTML = `<div style="color: var(--text-muted);">No active guest tokens generated.</div>`;
+      } else {
+        tokenContainer.innerHTML = `
+          <table class="data-table" style="margin-top: 8px;">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Label</th>
+                <th>Created</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tokens.map((t) => `
+                <tr>
+                  <td><code>${t.token}</code></td>
+                  <td>${t.label}</td>
+                  <td style="color: var(--text-muted); font-size: 11px;">${new Date(t.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <button class="btn btn-outline btn-sm btn-revoke" data-token="${t.token}">Revoke</button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+
+        tokenContainer.querySelectorAll(".btn-revoke").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const token = btn.getAttribute("data-token");
+            if (confirm(`Revoke access token ${token}?`)) {
+              AuthService.revokeGuestToken(token);
+              this.renderAdminPanel();
+            }
+          });
+        });
+      }
+    }
+
+    // Render access requests
+    const reqContainer = document.getElementById("accessRequestsListContainer");
+    if (reqContainer) {
+      const reqs = AuthService.getAccessRequests();
+      if (reqs.length === 0) {
+        reqContainer.innerHTML = `<div style="color: var(--text-muted);">No pending access requests.</div>`;
+      } else {
+        reqContainer.innerHTML = `
+          <table class="data-table" style="margin-top: 8px;">
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Email</th>
+                <th>Reason</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reqs.map((r) => `
+                <tr>
+                  <td style="font-weight: 500;">${r.name}</td>
+                  <td style="color: var(--text-secondary);">${r.email}</td>
+                  <td style="font-size: 12px;">${r.reason}</td>
+                  <td style="color: var(--text-muted); font-size: 11px;">${r.timestamp}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+    }
   }
 }
 
-// Instantiate on DOM load
 window.addEventListener("DOMContentLoaded", () => {
-  window.ascentApp = new AscentApp();
+  window.workspace = new EngineeringWorkspace();
 });
