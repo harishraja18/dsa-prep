@@ -807,7 +807,7 @@ a:hover {
   }
 
   /* Two-column splits stack vertically on mobile */
-  .split-2col, [style*="grid-template-columns: 1fr 1fr"], [style*="grid-template-columns: 2fr 1fr"] {
+  .split-2col, [style*="grid-template-columns: 1fr 1fr"], [style*="grid-template-columns: 2fr 1fr"], [style*="1.35fr"] {
     grid-template-columns: 1fr !important;
     gap: 14px !important;
   }

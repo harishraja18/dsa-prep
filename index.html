@@ -6,6 +6,7 @@
   <title>Engineering Preparation Workspace | Google DSA & AI</title>
   <meta name="description" content="Professional Google & FAANG interview preparation platform with daily DSA code editor, live FAANG job openings for India and global, FastPrep OA archive, and in-page travel study videos.">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -104,9 +105,19 @@
 
   <!-- App Header -->
   <header class="app-header">
-    <div class="brand-wrapper">
+    <div class="brand-wrapper" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <span class="brand-logo-text">Google Engineering Workspace</span>
       <span class="brand-badge">SWE & AI Candidate</span>
+
+      <!-- Dedicated Google DSA Focused Mode Switcher -->
+      <div class="mode-switcher-pill" style="display: flex; align-items: center; background: var(--hover-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 2px 4px; gap: 2px;">
+        <button class="btn btn-sm btn-primary" id="btnModeGoogleDsa" style="border-radius: 16px; padding: 3px 10px; font-size: 11px; font-weight: 500;">
+          Google DSA Mode
+        </button>
+        <button class="btn btn-sm btn-outline" id="btnModeFullPlatform" style="border-radius: 16px; padding: 3px 10px; font-size: 11px; border: none; background: transparent; color: var(--text-secondary);">
+          All Tracks (SWE + AI)
+        </button>
+      </div>
     </div>
 
     <div class="header-actions">
@@ -132,11 +143,12 @@
   <!-- Navigation Bar -->
   <nav class="app-nav" id="mainAppNav">
     <button class="nav-tab-btn active" data-tab="overview">Overview</button>
+    <button class="nav-tab-btn" data-tab="collab-interview" style="color: var(--google-blue); font-weight: 500;">Google Live Interview</button>
     <button class="nav-tab-btn" data-tab="daily-dsa">Daily DSA Editor</button>
-    <button class="nav-tab-btn" data-tab="careers">FAANG Careers & Openings</button>
     <button class="nav-tab-btn" data-tab="fastprep">FastPrep OA Archive</button>
     <button class="nav-tab-btn" data-tab="guide">Problem-Solving Checklist</button>
     <button class="nav-tab-btn" data-tab="dsa">DSA Directory</button>
+    <button class="nav-tab-btn" data-tab="careers">FAANG Careers & Openings</button>
     <button class="nav-tab-btn" data-tab="ai">AI Curriculum</button>
     <button class="nav-tab-btn" data-tab="timer">Study Tracker</button>
     <button class="nav-tab-btn" data-tab="news">Industry News</button>
@@ -244,14 +256,17 @@
             Jump straight into coding today's challenge or explore current FAANG openings.
           </p>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="btn btn-primary" id="btnGoToDailyDsa">
-              Open Daily DSA Code Editor &rarr;
+            <button class="btn btn-primary" id="btnGoToCollabInterview" style="background: var(--google-blue); color: #fff;">
+              Launch Live Mock Interview (Google Docs Style) &rarr;
             </button>
-            <button class="btn btn-outline" id="btnGoToCareers">
-              View Google & FAANG Job Openings &rarr;
+            <button class="btn btn-outline" id="btnGoToDailyDsa">
+              Open Daily DSA Code Editor &rarr;
             </button>
             <button class="btn btn-outline" id="btnGoToFastprep">
               Explore FastPrep Online Assessment Bank &rarr;
+            </button>
+            <button class="btn btn-outline" id="btnGoToCareers">
+              View Google & FAANG Job Openings &rarr;
             </button>
           </div>
         </div>
@@ -301,6 +316,13 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- TAB: GOOGLE LIVE COLLABORATIVE INTERVIEW (GOOGLE DOCS STYLE) -->
+    <section class="tab-pane" id="tab-collab-interview">
+      <div id="collaborativeInterviewContainer">
+        <!-- Rendered by CollaborativeInterviewRoom JS -->
       </div>
     </section>
 

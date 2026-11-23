@@ -1,7 +1,188 @@
 // FastPrep Archive: Real Online Assessment (OA) & Screening Questions by Company
+// Heavy focus on Google L4/L5 SWE & AI systems screening problems
 
 export const FASTPREP_OA_QUESTIONS = [
-  // Google OA
+  // --- GOOGLE TOP FREQUENT OA & INTERVIEW QUESTIONS ---
+  {
+    id: "oa_goog_trap_water",
+    company: "Google",
+    round: "Google Technical Phone Screen & Onsite",
+    title: "Trapping Rain Water (Volume of Lakes)",
+    difficulty: "Hard",
+    role: "Software Engineer / AI Core",
+    frequency: "Top #1 Google Classic",
+    leetcodeEquiv: "LeetCode 42",
+    leetcodeUrl: "https://leetcode.com/problems/trapping-rain-water/",
+    description: "Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining. In Google interviews, this is often framed as calculating the volume of water pooled in terrain profiles or mountain lakes.",
+    pattern: "Two Pointers (Optimal) or Monotonic Decreasing Stack",
+    timeComp: "O(N)",
+    spaceComp: "O(1)",
+    approach: "Maintain two pointers (left and right) with running leftMax and rightMax. Water trapped at each pointer is determined by min(leftMax, rightMax) - height[i]. Always advance the pointer pointing to the smaller boundary.",
+    sampleInput: "height = [0,1,0,2,1,0,1,3,2,1,2,1]",
+    expectedOutput: "6"
+  },
+  {
+    id: "oa_goog_snapshot",
+    company: "Google",
+    round: "Google Onsite / Google L4 Technical Screen",
+    title: "Snapshot Array",
+    difficulty: "Medium",
+    role: "Software Engineer / Distributed Systems",
+    frequency: "Most Frequent Google Interview Problem",
+    leetcodeEquiv: "LeetCode 1146",
+    leetcodeUrl: "https://leetcode.com/problems/snapshot-array/",
+    description: "Implement a SnapshotArray that supports set(index, val), snap() which takes a snapshot and returns the snap_id, and get(index, snap_id) which returns the value at index at the given snap_id. Designed to test efficient copy-on-write versioning.",
+    pattern: "Binary Search + Per-Index Versioned Hash Map / Array of Tuples",
+    timeComp: "set: O(1), snap: O(1), get: O(log S)",
+    spaceComp: "O(Total Writes)",
+    approach: "Store an array of history lists: history[index] = [{snap_id, val}]. When get(index, snap_id) is called, binary search in history[index] for the greatest snap_id <= requested snap_id.",
+    sampleInput: "SnapshotArray(3); set(0,5); snap(); set(0,6); get(0,0)",
+    expectedOutput: "snap_id=0, get(0,0) -> 5"
+  },
+  {
+    id: "oa_goog_currency_exchange",
+    company: "Google",
+    round: "Google OA / Screening",
+    title: "Evaluate Division (Currency Exchange Engine)",
+    difficulty: "Medium",
+    role: "Software Engineer",
+    frequency: "Google Top 3 Graph Classic",
+    leetcodeEquiv: "LeetCode 399",
+    leetcodeUrl: "https://leetcode.com/problems/evaluate-division/",
+    description: "Given equations representing currency ratios or variable divisions like A / B = 2.0, B / C = 3.0, answer arbitrary queries like A / C or B / A. If no valid ratio exists or a variable is unknown, return -1.0.",
+    pattern: "Graph DFS/BFS with Multiplicative Edge Weights or Disjoint Set Union (DSU)",
+    timeComp: "O(Queries * (V + E))",
+    spaceComp: "O(V + E)",
+    approach: "Model currencies as nodes in a directed graph where an edge (u -> v) has weight w, and reverse edge (v -> u) has weight 1/w. Use DFS/BFS with a visited set to find a path from source to target, multiplying weights along the way.",
+    sampleInput: "equations = [['a','b'],['b','c']], values = [2.0,3.0], queries = [['a','c'],['b','a'],['a','e']]",
+    expectedOutput: "[6.00000, 0.50000, -1.00000]"
+  },
+  {
+    id: "oa_goog_robot_cleaner",
+    company: "Google",
+    round: "Google Onsite Coding Interview",
+    title: "Robot Room Cleaner",
+    difficulty: "Hard",
+    role: "Software Engineer / Autonomous Systems",
+    frequency: "Google Exclusive Favorite",
+    leetcodeEquiv: "LeetCode 489",
+    leetcodeUrl: "https://leetcode.com/problems/robot-room-cleaner/",
+    description: "You control a robot in an unknown grid room with obstacles. You only have an API: move(), turnLeft(), turnRight(), clean(). The robot starts at an unknown position facing UP. Clean the entire room without getting trapped.",
+    pattern: "Backtracking with Relative Coordinates + Direction Offset Vectors",
+    timeComp: "O(N - M) where N is room cells and M is obstacles",
+    spaceComp: "O(N - M)",
+    approach: "Treat starting cell as (0, 0) and direction 0 (UP). Maintain a hash set of cleaned relative coordinates. When moving forward, recurse. Backtrack by turning 180 degrees, moving one step back, and restoring original orientation.",
+    sampleInput: "room = [[1,1,1],[1,0,1],[1,1,1]], row = 1, col = 0",
+    expectedOutput: "All reachable cells marked cleaned"
+  },
+  {
+    id: "oa_goog_longest_str_chain",
+    company: "Google",
+    round: "Google OA & Onsite",
+    title: "Longest String Chain",
+    difficulty: "Medium",
+    role: "Software Engineer / ML Systems",
+    frequency: "Top 5 Google Interview Question",
+    leetcodeEquiv: "LeetCode 1048",
+    leetcodeUrl: "https://leetcode.com/problems/longest-string-chain/",
+    description: "You are given an array of words. A word chain is a sequence of words [w1, w2, ..., wk] where each word is formed by inserting exactly one letter into the preceding word without reordering. Return the length of the longest possible word chain.",
+    pattern: "Dynamic Programming + Hash Map + Word Length Sorting",
+    timeComp: "O(N log N + N * L^2)",
+    spaceComp: "O(N)",
+    approach: "Sort words by length. For each word, generate all L predecessors by deleting one character at each position. If predecessor is in dp map, dp[word] = max(dp[word], dp[pred] + 1).",
+    sampleInput: "words = ['a','b','ba','bca','bda','bdca']",
+    expectedOutput: "4 (Chain: 'a' -> 'ba' -> 'bda' -> 'bdca')"
+  },
+  {
+    id: "oa_goog_meeting_rooms",
+    company: "Google",
+    round: "Google Technical Screening",
+    title: "Meeting Rooms II (Resource Allocator)",
+    difficulty: "Medium",
+    role: "Software Engineer / Infrastructure",
+    frequency: "Google Classic",
+    leetcodeEquiv: "LeetCode 253",
+    leetcodeUrl: "https://leetcode.com/problems/meeting-rooms-ii/",
+    description: "Given an array of meeting time intervals intervals where intervals[i] = [starti, endi], return the minimum number of conference rooms required so no two meetings overlap.",
+    pattern: "Min-Heap / Sweep Line (Chronological Event Points)",
+    timeComp: "O(N log N)",
+    spaceComp: "O(N)",
+    approach: "Sort meetings by start time. Store end times in a min-heap. For each meeting, if start >= heap.peek(), reuse the room (pop heap). Push current meeting's end time. Heap size represents required rooms.",
+    sampleInput: "intervals = [[0,30],[5,10],[15,20]]",
+    expectedOutput: "2"
+  },
+  {
+    id: "oa_goog_word_ladder",
+    company: "Google",
+    round: "Google Onsite Technical Round",
+    title: "Word Ladder (Shortest Transformation)",
+    difficulty: "Hard",
+    role: "Software Engineer",
+    frequency: "Google Top BFS Question",
+    leetcodeEquiv: "LeetCode 127",
+    leetcodeUrl: "https://leetcode.com/problems/word-ladder/",
+    description: "Given two words, beginWord and endWord, and a dictionary wordList, return the number of words in the shortest transformation sequence from beginWord to endWord such that only one letter is changed at each step and each transformed word exists in the list.",
+    pattern: "Bidirectional Breadth-First Search (BFS)",
+    timeComp: "O(M^2 * N) where M is word length",
+    spaceComp: "O(M * N)",
+    approach: "Run Bidirectional BFS from beginWord and endWord simultaneously. Expanding the smaller frontier on each iteration drastically shrinks the search branching factor.",
+    sampleInput: "beginWord = 'hit', endWord = 'cog', wordList = ['hot','dot','dog','lot','log','cog']",
+    expectedOutput: "5 ('hit' -> 'hot' -> 'dot' -> 'dog' -> 'cog')"
+  },
+  {
+    id: "oa_goog_logger",
+    company: "Google",
+    round: "Google OA / Screening",
+    title: "Logger Rate Limiter",
+    difficulty: "Easy / Medium",
+    role: "Software Engineer / Reliability",
+    frequency: "Google OA Classic",
+    leetcodeEquiv: "LeetCode 359",
+    leetcodeUrl: "https://leetcode.com/problems/logger-rate-limiter/",
+    description: "Design a logger system that receives a stream of messages with timestamps. Each unique message should only be printed at most once every 10 seconds. In Google systems, this is scaled to sliding window de-duplication.",
+    pattern: "Hash Map / Queue with Timestamp Sliding Window",
+    timeComp: "O(1) per message",
+    spaceComp: "O(Distinct Messages within 10s)",
+    approach: "Map message -> nextAllowedTimestamp. If timestamp >= map.get(message), update map with timestamp + 10 and return true; else return false.",
+    sampleInput: "shouldPrintMessage(1, 'foo'); shouldPrintMessage(2, 'bar'); shouldPrintMessage(3, 'foo'); shouldPrintMessage(11, 'foo')",
+    expectedOutput: "[true, true, false, true]"
+  },
+  {
+    id: "oa_goog_card_points",
+    company: "Google",
+    round: "Google OA / Technical Screen",
+    title: "Maximum Points You Can Obtain from Cards",
+    difficulty: "Medium",
+    role: "Software Engineer",
+    frequency: "Google OA High Frequency",
+    leetcodeEquiv: "LeetCode 1423",
+    leetcodeUrl: "https://leetcode.com/problems/maximum-points-you-can-obtain-from-cards/",
+    description: "There are several cards arranged in a row. In each step, you can take one card from the beginning or from the end of the row. You must take exactly k cards. Return the maximum score you can obtain.",
+    pattern: "Sliding Window on Remaining Subarray",
+    timeComp: "O(N)",
+    spaceComp: "O(1)",
+    approach: "Taking k cards from the ends is equivalent to leaving a contiguous subarray of size (N - k) in the middle whose sum is minimized. Answer = totalSum - minSubarraySum.",
+    sampleInput: "cardPoints = [1,2,3,4,5,6,1], k = 3",
+    expectedOutput: "12 (Pick 1 from end, then 6 from end, then 5 from end)"
+  },
+  {
+    id: "oa_goog_step_directions",
+    company: "Google",
+    round: "Google Onsite Interview",
+    title: "Step-By-Step Directions From Binary Tree Node",
+    difficulty: "Medium",
+    role: "Software Engineer",
+    frequency: "Google Frequent 2024-2026",
+    leetcodeEquiv: "LeetCode 2096",
+    leetcodeUrl: "https://leetcode.com/problems/step-by-step-directions-from-a-binary-tree-node-to-another/",
+    description: "Given the root of a binary tree with n unique values, find the shortest step-by-step path from startValue to destValue. A step is 'U' (to parent), 'L' (to left child), or 'R' (to right child).",
+    pattern: "Lowest Common Ancestor (LCA) + Root-to-Node Path Extraction",
+    timeComp: "O(N)",
+    spaceComp: "O(N)",
+    approach: "Find paths from root to startValue and destValue. Remove common prefix (the path to LCA). For the remaining steps to startValue, replace every move with 'U'. Append the remaining path to destValue.",
+    sampleInput: "root = [5,1,2,3,null,6,4], startValue = 3, destValue = 6",
+    expectedOutput: "'UURL'"
+  },
   {
     id: "oa_goog_1",
     company: "Google",
@@ -75,7 +256,7 @@ export const FASTPREP_OA_QUESTIONS = [
     expectedOutput: "[true, false]"
   },
 
-  // Amazon OA
+  // --- AMAZON OA ---
   {
     id: "oa_amzn_1",
     company: "Amazon",
@@ -131,7 +312,7 @@ export const FASTPREP_OA_QUESTIONS = [
     expectedOutput: "3"
   },
 
-  // Microsoft OA
+  // --- MICROSOFT OA ---
   {
     id: "oa_msft_1",
     company: "Microsoft",
@@ -150,26 +331,8 @@ export const FASTPREP_OA_QUESTIONS = [
     sampleInput: "s = 'aaabbbcc'",
     expectedOutput: "2 (Delete one 'b' and one 'c')"
   },
-  {
-    id: "oa_msft_2",
-    company: "Microsoft",
-    round: "Microsoft Codility OA",
-    title: "Fair Indexes in Two Arrays",
-    difficulty: "Easy / Medium",
-    role: "Software Engineer",
-    frequency: "Microsoft Classic",
-    leetcodeEquiv: "Codility Fair Indexes",
-    leetcodeUrl: "https://leetcode.com/discuss/interview-question/451482/",
-    description: "Given two arrays A and B of length N, find the number of fair indexes k (1 <= k < N) such that sum(A[0..k-1]) == sum(A[k..N-1]) == sum(B[0..k-1]) == sum(B[k..N-1]).",
-    pattern: "Running Prefix Sum Comparison",
-    timeComp: "O(N)",
-    spaceComp: "O(1)",
-    approach: "First verify that sum(A) == sum(B) and total sum is even. If so, iterate and check if prefixSumA == prefixSumB == totalSum / 2.",
-    sampleInput: "A = [4, -1, 0, 3], B = [-2, 5, 0, 3]",
-    expectedOutput: "2 (k=2 and k=3)"
-  },
 
-  // Meta OA
+  // --- META OA ---
   {
     id: "oa_meta_1",
     company: "Meta",

@@ -12,6 +12,7 @@ import { AuthService } from "./auth.js";
 import { ContestService } from "./contestService.js";
 import { DailyPlanner } from "./dailyPlanner.js";
 import { PrepChatbot } from "./chatbot.js";
+import { CollaborativeInterviewRoom } from "./collaborativeInterview.js";
 
 // Problem solving checklist to-do items
 const GUIDANCE_TODO_ITEMS = [
@@ -76,6 +77,8 @@ class EngineeringWorkspace {
     this.selectedPlannerMinutes = 120;
     this.currentDailyChallenge = CodeRunner.getTodayChallenge();
     this.currentDailyLanguage = "javascript";
+    this.focusMode = localStorage.getItem("workspace_focus_mode") || "google_dsa";
+    this.collabRoom = new CollaborativeInterviewRoom({ containerId: "collaborativeInterviewContainer" });
 
     this.timer = new StudyTimer(
       (tickData) => this.handleTimerTick(tickData),
@@ -84,6 +87,7 @@ class EngineeringWorkspace {
 
     this.initAuth();
     this.initTheme();
+    this.initFocusMode();
     this.initNavigation();
     this.initOverview();
     this.initDailyPlannerUI();
@@ -98,6 +102,17 @@ class EngineeringWorkspace {
     this.initIndustryNews();
     this.initAdminAndSecurity();
     this.chatbot = new PrepChatbot();
+
+    // Check if invite link was opened: ?interview=... or ?room=...
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const interviewRoom = urlParams.get("interview") || urlParams.get("room");
+      if (interviewRoom) {
+        const role = urlParams.get("role") || "candidate";
+        this.switchTab("collab-interview");
+        this.collabRoom.joinRoom(interviewRoom, role);
+      }
+    } catch {}
   }
 
   // --- AUTHENTICATION & SCOPES ---
@@ -109,62 +124,7 @@ class EngineeringWorkspace {
     const userLabel = document.getElementById("headerUserLabel");
     const logoutBtn = document.getElementById("headerLogoutBtn");
 
-    const enforcePermissions = () => {
-      const user = AuthService.getCurrentUser();
-      if (!user) return;
-
-      const navButtons = document.querySelectorAll(".nav-tab-btn");
-      const adminNavBtn = document.querySelector('.nav-tab-btn[data-tab="admin"]');
-
-      // STRICT OWNER AUTHORIZATION:
-      // Only Harish Raja (role === 'owner', email === 'harishraja1802@gmail.com') can view or access Administration & Security.
-      // ALL guests (even with full access scope) are 100% blocked from the Administration tab.
-      const isOwner = user.role === "owner" && user.email === "harishraja1802@gmail.com";
-
-      if (!isOwner) {
-        if (adminNavBtn) adminNavBtn.style.setProperty("display", "none", "important");
-
-        if (user.scope === "careers_only") {
-          navButtons.forEach((btn) => {
-            const tab = btn.getAttribute("data-tab");
-            const allowed = tab === "careers" || tab === "overview";
-            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
-          });
-          this.switchTab("careers");
-        } else if (user.scope === "dsa_only") {
-          navButtons.forEach((btn) => {
-            const tab = btn.getAttribute("data-tab");
-            const allowed = tab === "daily-dsa" || tab === "guide" || tab === "dsa" || tab === "overview";
-            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
-          });
-          this.switchTab("daily-dsa");
-        } else if (user.scope === "ai_only") {
-          navButtons.forEach((btn) => {
-            const tab = btn.getAttribute("data-tab");
-            const allowed = tab === "ai" || tab === "overview";
-            if (tab !== "admin") btn.style.display = allowed ? "inline-flex" : "none";
-          });
-          this.switchTab("ai");
-        } else {
-          // Full guest access: can view study tabs, but NEVER admin
-          navButtons.forEach((btn) => {
-            const tab = btn.getAttribute("data-tab");
-            if (tab === "admin") {
-              btn.style.setProperty("display", "none", "important");
-            } else {
-              btn.style.removeProperty("display");
-              btn.style.display = "inline-flex";
-            }
-          });
-        }
-      } else {
-        // Owner only (Harish Raja): all tabs including admin are fully visible
-        navButtons.forEach((btn) => {
-          btn.style.removeProperty("display");
-          btn.style.display = "inline-flex";
-        });
-      }
-    };
+    const enforcePermissions = () => this.enforcePermissions();
 
     const checkAuthStatus = () => {
       if (AuthService.isAuthenticated()) {
@@ -352,6 +312,98 @@ class EngineeringWorkspace {
     });
   }
 
+  // --- GOOGLE DSA FOCUSED MODE ---
+  initFocusMode() {
+    const btnGoogleDsa = document.getElementById("btnModeGoogleDsa");
+    const btnFull = document.getElementById("btnModeFullPlatform");
+
+    const applyFocusMode = (mode) => {
+      this.focusMode = mode;
+      localStorage.setItem("workspace_focus_mode", mode);
+
+      const isGoogleMode = mode === "google_dsa";
+      if (btnGoogleDsa) {
+        btnGoogleDsa.className = isGoogleMode ? "btn btn-sm btn-primary" : "btn btn-sm btn-outline";
+        btnGoogleDsa.style.background = isGoogleMode ? "var(--google-blue)" : "transparent";
+        btnGoogleDsa.style.color = isGoogleMode ? "#fff" : "var(--text-secondary)";
+        btnGoogleDsa.style.border = isGoogleMode ? "none" : "none";
+      }
+      if (btnFull) {
+        btnFull.className = !isGoogleMode ? "btn btn-sm btn-primary" : "btn btn-sm btn-outline";
+        btnFull.style.background = !isGoogleMode ? "var(--google-blue)" : "transparent";
+        btnFull.style.color = !isGoogleMode ? "#fff" : "var(--text-secondary)";
+        btnFull.style.border = !isGoogleMode ? "none" : "none";
+      }
+
+      this.enforcePermissions();
+    };
+
+    btnGoogleDsa?.addEventListener("click", () => applyFocusMode("google_dsa"));
+    btnFull?.addEventListener("click", () => applyFocusMode("full"));
+
+    applyFocusMode(this.focusMode);
+  }
+
+  // --- STRICT RBAC & FOCUS PERMISSIONS ---
+  enforcePermissions() {
+    const user = AuthService.getCurrentUser();
+    if (!user) return;
+
+    const navButtons = document.querySelectorAll(".nav-tab-btn");
+    const isOwner = user.role === "owner" && user.email === "harishraja1802@gmail.com";
+    const isGoogleDsaMode = this.focusMode === "google_dsa";
+
+    navButtons.forEach((btn) => {
+      const tab = btn.getAttribute("data-tab");
+
+      // 1. Strictly lock Administration & Security to owner harishraja1802@gmail.com
+      if (tab === "admin") {
+        if (!isOwner) {
+          btn.style.setProperty("display", "none", "important");
+        } else {
+          btn.style.removeProperty("display");
+          btn.style.display = "inline-flex";
+        }
+        return;
+      }
+
+      // 2. In Google DSA Mode: hide general AI curriculum, career listings, and news to eliminate all distractions
+      if (isGoogleDsaMode && (tab === "careers" || tab === "ai" || tab === "news")) {
+        btn.style.setProperty("display", "none", "important");
+        return;
+      }
+
+      // 3. Guest scopes handling
+      if (!isOwner) {
+        if (user.scope === "careers_only") {
+          const allowed = tab === "careers" || tab === "overview";
+          btn.style.display = allowed ? "inline-flex" : "none";
+        } else if (user.scope === "dsa_only") {
+          const allowed = tab === "daily-dsa" || tab === "collab-interview" || tab === "guide" || tab === "dsa" || tab === "fastprep" || tab === "timer" || tab === "overview";
+          btn.style.display = allowed ? "inline-flex" : "none";
+        } else if (user.scope === "ai_only") {
+          const allowed = tab === "ai" || tab === "overview";
+          btn.style.display = allowed ? "inline-flex" : "none";
+        } else {
+          btn.style.removeProperty("display");
+          btn.style.display = "inline-flex";
+        }
+      } else {
+        btn.style.removeProperty("display");
+        btn.style.display = "inline-flex";
+      }
+    });
+
+    // If currently on a hidden tab in Google DSA Mode, automatically redirect to Google Live Interview
+    const activePane = document.querySelector(".tab-pane.active");
+    if (activePane) {
+      const activeTab = activePane.id.replace("tab-", "");
+      if (isGoogleDsaMode && (activeTab === "careers" || activeTab === "ai" || activeTab === "news")) {
+        this.switchTab("collab-interview");
+      }
+    }
+  }
+
   // --- NAVIGATION ---
   initNavigation() {
     const navButtons = document.querySelectorAll(".nav-tab-btn");
@@ -366,6 +418,7 @@ class EngineeringWorkspace {
     document.getElementById("btnGoToDailyDsa")?.addEventListener("click", () => this.switchTab("daily-dsa"));
     document.getElementById("btnGoToCareers")?.addEventListener("click", () => this.switchTab("careers"));
     document.getElementById("btnGoToFastprep")?.addEventListener("click", () => this.switchTab("fastprep"));
+    document.getElementById("btnGoToCollabInterview")?.addEventListener("click", () => this.switchTab("collab-interview"));
 
     document.getElementById("overviewStartPomodoro")?.addEventListener("click", () => {
       this.switchTab("timer");
@@ -388,6 +441,11 @@ class EngineeringWorkspace {
     });
 
     if (tabId === "overview") this.updateOverview();
+    if (tabId === "collab-interview") {
+      if (!this.collabRoom.roomId) {
+        this.collabRoom.renderLobbyUI();
+      }
+    }
     if (tabId === "daily-dsa") this.renderDailyDsaChallenge();
     if (tabId === "careers") this.renderJobOpenings();
     if (tabId === "fastprep") this.renderFastprepQuestions();
