@@ -332,7 +332,7 @@ export const FASTPREP_OA_QUESTIONS = [
     expectedOutput: "2 (Delete one 'b' and one 'c')"
   },
 
-  // --- META OA ---
+  // --- META OA & ONSITE ---
   {
     id: "oa_meta_1",
     company: "Meta",
@@ -350,5 +350,137 @@ export const FASTPREP_OA_QUESTIONS = [
     approach: "Apply (char - 'a' + factor) % 26 for lowercase, % 26 for uppercase, and % 10 for digits.",
     sampleInput: "input = 'All-convoYs-9-be:Alert1.', factor = 4",
     expectedOutput: "'Epp-gsrzsCw-3-fi:Epivx5.'"
+  },
+  {
+    id: "oa_meta_sparse_vec",
+    company: "Meta",
+    round: "Meta Technical Phone Screen",
+    title: "Dot Product of Two Sparse Vectors",
+    difficulty: "Medium",
+    role: "Software Engineer / ML Core",
+    frequency: "Top #1 Meta Screening Question",
+    leetcodeEquiv: "LeetCode 1570",
+    leetcodeUrl: "https://leetcode.com/problems/dot-product-of-two-sparse-vectors/",
+    description: "Given two sparse vectors, compute their dot product efficiently without iterating over large numbers of zero entries.",
+    pattern: "Two Pointers on Index-Value Pairs (or Hash Map)",
+    timeComp: "O(Non-Zero Entries L1 + L2)",
+    spaceComp: "O(Non-Zero Entries)",
+    approach: "Store non-zero elements as an array of pairs: [(index, val)]. Use two pointers to compute product where indices match.",
+    sampleInput: "v1 = [1,0,0,2,3], v2 = [0,3,0,4,0]",
+    expectedOutput: "8 (2*4)"
+  },
+  {
+    id: "oa_meta_ocean_view",
+    company: "Meta",
+    round: "Meta Onsite & Phone Screen",
+    title: "Buildings With an Ocean View",
+    difficulty: "Medium",
+    role: "Software Engineer",
+    frequency: "Meta Top 5 Favorite",
+    leetcodeEquiv: "LeetCode 1762",
+    leetcodeUrl: "https://leetcode.com/problems/buildings-with-an-ocean-view/",
+    description: "There are n buildings in a line facing the ocean on the right. An ocean view is possible if all buildings to the right are strictly shorter. Return indices of all buildings with an ocean view in sorted order.",
+    pattern: "Monotonic Stack / Right-to-Left Running Maximum",
+    timeComp: "O(N)",
+    spaceComp: "O(N)",
+    approach: "Traverse from right to left keeping track of max_height seen so far. If heights[i] > max_height, add i to result.",
+    sampleInput: "heights = [4,2,3,1]",
+    expectedOutput: "[0, 2, 3]"
+  },
+  {
+    id: "oa_meta_min_remove",
+    company: "Meta",
+    round: "Meta Screening",
+    title: "Minimum Remove to Make Valid Parentheses",
+    difficulty: "Medium",
+    role: "Software Engineer",
+    frequency: "Meta High Frequency",
+    leetcodeEquiv: "LeetCode 1249",
+    leetcodeUrl: "https://leetcode.com/problems/minimum-remove-to-make-valid-parentheses/",
+    description: "Given a string s of '(' , ')' and lowercase English characters, remove the minimum number of parentheses so that the resulting parentheses string is valid.",
+    pattern: "Stack for Unmatched Indices + In-Place Removal",
+    timeComp: "O(N)",
+    spaceComp: "O(N)",
+    approach: "Push indices of '(' to stack. On ')', pop if stack not empty, else mark ')' index for removal. At end, mark remaining stack indices for removal.",
+    sampleInput: "s = 'lee(t(c)o)de)'",
+    expectedOutput: "'lee(t(c)o)de'"
+  },
+
+  // --- APPLE OA & INTERVIEW ---
+  {
+    id: "oa_apple_lru",
+    company: "Apple",
+    round: "Apple Software Engineer Onsite",
+    title: "LRU Cache Design with TTL",
+    difficulty: "Medium / Hard",
+    role: "Software Engineer / CoreOS",
+    frequency: "Apple #1 Systems Question",
+    leetcodeEquiv: "LeetCode 146",
+    leetcodeUrl: "https://leetcode.com/problems/lru-cache/",
+    description: "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache with O(1) get and put operations.",
+    pattern: "Hash Map + Doubly Linked List",
+    timeComp: "O(1) get and put",
+    spaceComp: "O(Capacity)",
+    approach: "Maintain a Doubly Linked List with dummy head and tail. A Hash Map maps key -> Node. On access, move node to head. On overflow, evict node before tail.",
+    sampleInput: "LRUCache(2); put(1, 1); put(2, 2); get(1); put(3, 3); get(2);",
+    expectedOutput: "[null, null, null, 1, null, -1]"
+  },
+  {
+    id: "oa_apple_course_sched",
+    company: "Apple",
+    round: "Apple Systems Screen",
+    title: "Course Schedule II (Build Order Dependency)",
+    difficulty: "Medium",
+    role: "Software Engineer / Infrastructure",
+    frequency: "Apple Core Algorithm",
+    leetcodeEquiv: "LeetCode 210",
+    leetcodeUrl: "https://leetcode.com/problems/course-schedule-ii/",
+    description: "Given n courses labelled from 0 to n - 1 and prerequisites [a, b] meaning b must be taken before a. Return the ordering of courses you should take to finish all courses.",
+    pattern: "Topological Sort (Kahn's BFS In-Degree Algorithm)",
+    timeComp: "O(V + E)",
+    spaceComp: "O(V + E)",
+    approach: "Calculate in-degrees for each course. Enqueue courses with 0 in-degree. When processing a course, decrement neighbor in-degrees; if 0, enqueue. If result length == n, valid ordering exists.",
+    sampleInput: "numCourses = 4, prerequisites = [[1,0],[2,0],[3,1],[3,2]]",
+    expectedOutput: "[0,2,1,3] or [0,1,2,3]"
+  },
+
+  // --- UBER OA & SCREENING ---
+  {
+    id: "oa_uber_bus_routes",
+    company: "Uber",
+    round: "Uber Technical Screening",
+    title: "Bus Routes (Minimum Transfers Between Stops)",
+    difficulty: "Hard",
+    role: "Software Engineer / Routing Engine",
+    frequency: "Top #1 Uber Interview Question",
+    leetcodeEquiv: "LeetCode 815",
+    leetcodeUrl: "https://leetcode.com/problems/bus-routes/",
+    description: "You are given an array routes where routes[i] is a bus route that repeats forever. You start at stop source and want to go to stop target. Return the least number of buses you must take.",
+    pattern: "Breadth-First Search (BFS) on Stop-to-Bus Adjacency",
+    timeComp: "O(Total Stops across all Routes)",
+    spaceComp: "O(Total Stops)",
+    approach: "Build a map of stop -> set of bus routes that pass through it. Run BFS on bus routes starting from all buses passing through source. Track visited buses and visited stops to avoid cycles.",
+    sampleInput: "routes = [[1,2,7],[3,6,7]], source = 1, target = 6",
+    expectedOutput: "2 (Bus 0 -> Transfer at 7 -> Bus 1)"
+  },
+
+  // --- NETFLIX SCREENING ---
+  {
+    id: "oa_nflx_task_sched",
+    company: "Netflix",
+    round: "Netflix Distributed Systems Screening",
+    title: "Task Scheduler with Cool Down Time",
+    difficulty: "Medium",
+    role: "Software Engineer / Streaming Infrastructure",
+    frequency: "Netflix High Frequency",
+    leetcodeEquiv: "LeetCode 621",
+    leetcodeUrl: "https://leetcode.com/problems/task-scheduler/",
+    description: "Given characters tasks and a cool-down integer n between identical tasks, find the least number of units of times that the CPU will take to finish all given tasks.",
+    pattern: "Greedy Frequency Counting / Math Slot Formulation",
+    timeComp: "O(N)",
+    spaceComp: "O(1) - 26 uppercase letters",
+    approach: "Find the max frequency task (maxCount). The formula is max(tasks.length, (maxCount - 1) * (n + 1) + numberOfTasksWithMaxCount).",
+    sampleInput: "tasks = ['A','A','A','B','B','B'], n = 2",
+    expectedOutput: "8 (A -> B -> idle -> A -> B -> idle -> A -> B)"
   }
 ];
