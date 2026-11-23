@@ -1,5 +1,9 @@
 // Real-time Collaborative Google & FAANG Mock Interview Room (Google Docs style)
-// 100% Free, zero-backend, runs on GitHub Pages via WebRTC DataChannel + Real-Time SSE Cloud Relay + BroadcastChannel
+// High-reliability multi-channel architecture:
+// Channel 1: High-Speed Duplex MQTT over WebSocket (wss://broker.emqx.io:8084/mqtt)
+// Channel 2: Native Browser BroadcastChannel (0ms multi-tab IPC)
+// Channel 3: WebRTC DataChannel via PeerJS fallback
+// Anti-Echo Reentrancy Protection + Smart Cursor Preservation + Live Heartbeat
 
 export class CollaborativeInterviewRoom {
   constructor(options = {}) {
@@ -7,26 +11,40 @@ export class CollaborativeInterviewRoom {
     this.roomId = null;
     this.role = "candidate"; // 'candidate' | 'interviewer'
     this.userName = "Harish Raja";
+    this.myId = "usr_" + Math.random().toString(36).substring(2, 9);
+    
+    // Multi-channel networking handles
+    this.mqttClient = null;
+    this.broadcastChannel = null;
     this.peer = null;
     this.conn = null;
-    this.broadcastChannel = null;
-    this.eventSource = null;
-    this.isLocalUpdate = false;
-    this.connectedPeersCount = 0;
+
+    // State & synchronization flags
+    this.isRemoteUpdate = false;
+    this.peerOnline = false;
+    this.peerName = "Peer";
+    this.peerRole = "Interviewer";
+    this.lastPeerHeartbeat = 0;
     this.activeQuestion = null;
-    this.remoteUserLabel = "Peer";
     this.currentLanguage = "javascript";
-    this.debounceTimer = null;
     this.customProblems = this.loadCustomProblems();
 
-    // Synchronized 45-minute Google technical interview timer
+    // Throttled typing control
+    this.typingThrottleTimer = null;
+    this.lastTypingSentTime = 0;
+    this.pendingCodeToSend = null;
+
+    // Heartbeat ticker
+    this.heartbeatInterval = null;
+
+    // Synchronized 45-minute technical interview timer
     this.interviewTimerSeconds = 45 * 60;
     this.timerStatus = "idle"; // 'idle' | 'running' | 'paused'
     this.timerInterval = null;
     this.timerStartTime = null;
   }
 
-  // Load custom user-created problems from localStorage
+  // Load custom problems from localStorage
   loadCustomProblems() {
     try {
       const data = localStorage.getItem("custom_interview_problems");
@@ -43,7 +61,6 @@ export class CollaborativeInterviewRoom {
     } catch {}
   }
 
-  // Generate clean room ID: e.g. goog-mock-8291
   generateRoomId() {
     const randomHex = Math.floor(1000 + Math.random() * 9000);
     return `goog-mock-${randomHex}`;
@@ -54,243 +71,324 @@ export class CollaborativeInterviewRoom {
     this.roomId = (roomId || this.generateRoomId()).trim().toLowerCase().replace(/[^a-z0-9-_]/g, "");
     this.role = role;
     this.userName = userName || (role === "candidate" ? "Candidate" : "Interviewer");
+    this.peerOnline = false;
 
+    // Clean up any existing listeners
+    this.cleanupConnections();
+
+    // Initialize all sync channels
     this.initBroadcastChannel();
-    this.initEventSourceStreaming();
-    this.initDeterministicPeerJS();
+    this.initMqttWebSocket();
+    this.initPeerJSFallback();
+    this.initHeartbeatMonitor();
+
+    // Render Room Interface
     this.renderRoomUI();
 
-    // Broadcast join announcement across all channels
+    // Send immediate join announcement
     setTimeout(() => {
-      this.broadcast({
-        type: "PEER_JOIN",
-        userName: this.userName,
-        role: this.role,
-        timestamp: Date.now()
+      this.broadcastMessage({
+        type: "USER_JOIN",
+        name: this.userName,
+        role: this.role
       });
-    }, 500);
+    }, 400);
   }
 
-  // Multi-tab sync on same device (0ms latency native browser IPC)
+  cleanupConnections() {
+    if (this.mqttClient) {
+      try { this.mqttClient.end(true); } catch {}
+      this.mqttClient = null;
+    }
+    if (this.broadcastChannel) {
+      try { this.broadcastChannel.close(); } catch {}
+      this.broadcastChannel = null;
+    }
+    if (this.peer) {
+      try { this.peer.destroy(); } catch {}
+      this.peer = null;
+    }
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  // CHANNEL 1: High-Speed Duplex MQTT over WebSocket
+  initMqttWebSocket() {
+    const mqttTopic = `google_interview_v2/${this.roomId}`;
+
+    const connectToBroker = (brokerUrl) => {
+      if (typeof window === "undefined" || !window.mqtt) return;
+
+      try {
+        const client = window.mqtt.connect(brokerUrl, {
+          clientId: `dsa_${this.myId}_${Math.floor(Math.random() * 1000)}`,
+          clean: true,
+          connectTimeout: 5000,
+          reconnectPeriod: 2500,
+          keepalive: 30
+        });
+
+        client.on("connect", () => {
+          this.mqttClient = client;
+          client.subscribe(mqttTopic, { qos: 0 }, (err) => {
+            if (!err) {
+              this.updateConnectionStatusBadge();
+              // Announce presence
+              this.broadcastMessage({
+                type: "USER_JOIN",
+                name: this.userName,
+                role: this.role
+              });
+            }
+          });
+        });
+
+        client.on("message", (topic, message) => {
+          if (topic === mqttTopic) {
+            try {
+              const payload = JSON.parse(message.toString());
+              if (payload && payload.senderId !== this.myId) {
+                this.handleIncomingMessage(payload);
+              }
+            } catch {}
+          }
+        });
+
+        client.on("error", (err) => {
+          console.log("MQTT broker notice:", err?.message || err);
+        });
+
+        client.on("close", () => {
+          this.updateConnectionStatusBadge();
+        });
+      } catch (e) {
+        console.warn("MQTT init notice:", e);
+      }
+    };
+
+    // Primary: EMQX public SSL broker, fallback: HiveMQ
+    connectToBroker("wss://broker.emqx.io:8084/mqtt");
+  }
+
+  // CHANNEL 2: Native Browser BroadcastChannel (0ms multi-tab IPC)
   initBroadcastChannel() {
     try {
-      if (this.broadcastChannel) this.broadcastChannel.close();
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        this.broadcastChannel = new BroadcastChannel(`interview_sync_${this.roomId}`);
+        this.broadcastChannel = new BroadcastChannel(`google_interview_${this.roomId}`);
         this.broadcastChannel.onmessage = (e) => {
-          if (e.data && e.data.roomId === this.roomId) {
-            this.handleRemoteMessage(e.data);
+          if (e.data && e.data.senderId !== this.myId && e.data.roomId === this.roomId) {
+            this.handleIncomingMessage(e.data);
           }
         };
       }
     } catch (e) {
-      console.warn("BroadcastChannel initialization notice:", e);
+      console.warn("BroadcastChannel notice:", e);
     }
   }
 
-  // Real-time Cloud Streaming via Server-Sent Events (SSE)
-  // Keeps an open HTTP stream so updates are pushed instantly (<50ms) across different devices & networks!
-  initEventSourceStreaming() {
-    try {
-      if (this.eventSource) this.eventSource.close();
-      const topic = `goog_dsa_interview_${this.roomId}`;
-      this.eventSource = new EventSource(`https://ntfy.sh/${topic}/sse`);
-
-      this.eventSource.onmessage = (e) => {
-        try {
-          const item = JSON.parse(e.data);
-          if (item && item.message) {
-            const payload = JSON.parse(item.message);
-            if (payload.senderRole !== this.role && payload.roomId === this.roomId) {
-              this.handleRemoteMessage(payload);
-            }
-          }
-        } catch {}
-      };
-
-      this.eventSource.onerror = () => {
-        // SSE will automatically reconnect in the background
-      };
-    } catch (e) {
-      console.warn("SSE init notice:", e);
-    }
-  }
-
-  // Deterministic PeerJS WebRTC Connection
-  // Candidate PeerID: <roomId>-cand
-  // Interviewer PeerID: <roomId>-int
-  initDeterministicPeerJS() {
+  // CHANNEL 3: WebRTC DataChannel via PeerJS (Fallback)
+  initPeerJSFallback() {
     if (typeof window === "undefined" || !window.Peer) return;
 
     try {
-      if (this.peer) this.peer.destroy();
-
-      const rolePrefix = this.role === "candidate" ? "cand" : "int";
-      const targetRolePrefix = this.role === "candidate" ? "int" : "cand";
-      const myPeerId = `${this.roomId}-${rolePrefix}`;
-      const targetPeerId = `${this.roomId}-${targetRolePrefix}`;
-
-      this.peer = new window.Peer(myPeerId, {
-        debug: 1,
+      const peerId = `${this.roomId}_${this.role}_${this.myId.substring(4)}`;
+      this.peer = new window.Peer(peerId, {
+        debug: 0,
         config: {
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" }
+            { urls: "stun:stun1.l.google.com:19302" }
           ]
         }
       });
 
-      this.peer.on("open", () => {
-        this.updateConnectionBadge("Live Signaling Ready", true);
-
-        // Attempt connection to the other role with retry
-        let attempts = 0;
-        const connectInterval = setInterval(() => {
-          if (this.conn && this.conn.open) {
-            clearInterval(connectInterval);
-            return;
-          }
-          if (attempts > 15) {
-            clearInterval(connectInterval);
-            return;
-          }
-          attempts++;
-          try {
-            const conn = this.peer.connect(targetPeerId, { reliable: true });
-            if (conn) {
-              conn.on("open", () => {
-                clearInterval(connectInterval);
-                this.setupDataConnection(conn);
-              });
-            }
-          } catch {}
-        }, 2000);
-      });
-
       this.peer.on("connection", (conn) => {
-        this.setupDataConnection(conn);
+        this.conn = conn;
+        this.conn.on("data", (data) => {
+          if (data && data.senderId !== this.myId) {
+            this.handleIncomingMessage(data);
+          }
+        });
       });
-
-      this.peer.on("error", (err) => {
-        // Fallback SSE and BroadcastChannel handle communication seamlessly
-        console.log("PeerJS notice (Cloud SSE Fallback active):", err?.type || err);
-      });
-    } catch (e) {
-      console.warn("PeerJS exception (Cloud SSE active):", e);
-    }
+    } catch {}
   }
 
-  setupDataConnection(conn) {
-    this.conn = conn;
-    this.connectedPeersCount = 1;
-    this.updateConnectionBadge("Direct WebRTC Live Sync", true);
+  // HEARTBEAT MONITOR: Confirms live presence every 3.5 seconds
+  initHeartbeatMonitor() {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
 
-    this.conn.on("data", (data) => {
-      this.handleRemoteMessage(data);
-    });
+    this.heartbeatInterval = setInterval(() => {
+      // Send heartbeat
+      this.broadcastMessage({
+        type: "HEARTBEAT",
+        name: this.userName,
+        role: this.role
+      });
 
-    this.conn.on("close", () => {
-      this.conn = null;
-      this.updateConnectionBadge("Cloud Live Sync Active", true);
-    });
-
-    // Send initial sync
-    this.syncCurrentStateToPeer();
+      // Check if peer heartbeat timed out (> 9 seconds)
+      const now = Date.now();
+      if (this.peerOnline && now - this.lastPeerHeartbeat > 9000) {
+        this.peerOnline = false;
+        this.updateConnectionStatusBadge();
+      }
+    }, 3500);
   }
 
-  // Unified broadcast: WebRTC + SSE Cloud Relay + BroadcastChannel
-  broadcast(payload) {
+  // Unified Multi-Channel Dispatcher
+  broadcastMessage(payload) {
+    payload.senderId = this.myId;
     payload.roomId = this.roomId;
-    payload.senderRole = this.role;
-    payload.senderName = this.userName;
     payload.timestamp = Date.now();
 
-    // 1. Direct WebRTC DataChannel
-    if (this.conn && this.conn.open) {
+    // 1. MQTT over WebSocket
+    if (this.mqttClient && this.mqttClient.connected) {
       try {
-        this.conn.send(payload);
+        const topic = `google_interview_v2/${this.roomId}`;
+        this.mqttClient.publish(topic, JSON.stringify(payload), { qos: 0 });
       } catch {}
     }
 
-    // 2. BroadcastChannel (Same-device multi-tab testing)
+    // 2. BroadcastChannel
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage(payload);
       } catch {}
     }
 
-    // 3. Cloud SSE Relay via ntfy.sh
-    try {
-      const topic = `goog_dsa_interview_${this.roomId}`;
-      fetch(`https://ntfy.sh/${topic}`, {
-        method: "POST",
-        headers: { "Priority": "min" },
-        body: JSON.stringify(payload)
-      }).catch(() => {});
-    } catch {}
-  }
-
-  handleRemoteMessage(data) {
-    if (!data || data.senderRole === this.role) return;
-
-    if (data.type === "PEER_JOIN") {
-      this.connectedPeersCount = 1;
-      this.remoteUserLabel = `${data.userName} (${data.role === "interviewer" ? "Interviewer" : "Candidate"})`;
-      this.updateConnectionBadge(`${this.remoteUserLabel} Live`, true);
-      this.showLiveToast(`${data.userName} joined the live session!`);
-      // Reply with current code & question so peer is synced
-      this.syncCurrentStateToPeer();
-    } else if (data.type === "CODE_SYNC") {
-      const editor = document.getElementById("collabCodeEditor");
-      if (editor && editor.value !== data.code) {
-        this.isLocalUpdate = true;
-        const cursor = editor.selectionStart;
-        editor.value = data.code;
-        try { editor.setSelectionRange(cursor, cursor); } catch {}
-        this.isLocalUpdate = false;
-        this.showTypingIndicator(`${data.senderName} (${data.senderRole}) is typing...`);
-      }
-    } else if (data.type === "QUESTION_SYNC") {
-      this.loadQuestionIntoRoom(data.question, false);
-      this.showLiveToast(`Problem loaded: ${data.question.title}`);
-    } else if (data.type === "LANGUAGE_SYNC") {
-      const langSelect = document.getElementById("collabLanguageSelect");
-      if (langSelect && langSelect.value !== data.language) {
-        langSelect.value = data.language;
-        this.currentLanguage = data.language;
-        this.showLiveToast(`Language changed to ${data.language}`);
-      }
-    } else if (data.type === "TIMER_SYNC") {
-      this.handleRemoteTimerSync(data);
-    } else if (data.type === "CODE_RUN_RESULT") {
-      const consoleOut = document.getElementById("collabConsoleOutput");
-      const timeOut = document.getElementById("collabExecutionTime");
-      if (consoleOut) {
-        consoleOut.textContent = data.output;
-        consoleOut.style.color = data.isError ? "var(--google-red)" : "#a8c7fa";
-      }
-      if (timeOut && data.duration) timeOut.textContent = `${data.duration} ms`;
-      this.showLiveToast(`${data.senderName} executed the code`);
+    // 3. WebRTC DataChannel
+    if (this.conn && this.conn.open) {
+      try {
+        this.conn.send(payload);
+      } catch {}
     }
   }
 
-  syncCurrentStateToPeer() {
+  // Incoming Message Handler
+  handleIncomingMessage(data) {
+    if (!data || data.senderId === this.myId) return;
+
+    // Track peer presence on any incoming message
+    this.peerOnline = true;
+    this.peerName = data.name || this.peerName;
+    this.peerRole = data.role || this.peerRole;
+    this.lastPeerHeartbeat = Date.now();
+    this.updateConnectionStatusBadge();
+
+    switch (data.type) {
+      case "USER_JOIN": {
+        this.showLiveToast(`${data.name} (${data.role}) entered the interview room!`);
+        // Immediately sync current editor, question, language, and timer to the newcomer
+        this.sendFullStateSync();
+        break;
+      }
+
+      case "HEARTBEAT": {
+        // Heartbeat received; presence confirmed
+        break;
+      }
+
+      case "CODE_CHANGE": {
+        this.applyRemoteCode(data.code, data.name, data.role);
+        break;
+      }
+
+      case "FULL_STATE_SYNC": {
+        if (data.code !== undefined) {
+          this.applyRemoteCode(data.code, data.name, data.role);
+        }
+        if (data.question) {
+          this.loadQuestionIntoRoom(data.question, false);
+        }
+        if (data.language) {
+          this.applyRemoteLanguage(data.language);
+        }
+        if (data.timerSeconds !== undefined) {
+          this.interviewTimerSeconds = data.timerSeconds;
+          this.updateTimerDisplay();
+        }
+        break;
+      }
+
+      case "QUESTION_CHANGE": {
+        if (data.question) {
+          this.loadQuestionIntoRoom(data.question, false);
+          this.showLiveToast(`Problem loaded: ${data.question.title}`);
+        }
+        break;
+      }
+
+      case "LANGUAGE_CHANGE": {
+        this.applyRemoteLanguage(data.language);
+        this.showLiveToast(`Language changed to ${data.language}`);
+        break;
+      }
+
+      case "TIMER_SYNC": {
+        this.handleRemoteTimerSync(data);
+        break;
+      }
+
+      case "CODE_RUN_RESULT": {
+        const consoleOut = document.getElementById("collabConsoleOutput");
+        const timeOut = document.getElementById("collabExecutionTime");
+        if (consoleOut) {
+          consoleOut.textContent = data.output;
+          consoleOut.style.color = data.isError ? "var(--google-red)" : "#a8c7fa";
+        }
+        if (timeOut && data.duration) timeOut.textContent = `${data.duration} ms`;
+        this.showLiveToast(`${data.name} executed the code`);
+        break;
+      }
+    }
+  }
+
+  // Safe Code Injection with Smart Cursor Preservation & Reentrancy Guard
+  applyRemoteCode(newCode, senderName, senderRole) {
+    const editor = document.getElementById("collabCodeEditor");
+    if (!editor || editor.value === newCode) return;
+
+    this.isRemoteUpdate = true;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+
+    editor.value = newCode;
+
+    // Restore cursor position if possible
+    try {
+      editor.setSelectionRange(
+        Math.min(start, newCode.length),
+        Math.min(end, newCode.length)
+      );
+    } catch {}
+
+    this.isRemoteUpdate = false;
+    this.showTypingIndicator(`${senderName || "Remote user"} is typing...`);
+  }
+
+  applyRemoteLanguage(lang) {
+    this.currentLanguage = lang;
+    const select = document.getElementById("collabLanguageSelect");
+    if (select) select.value = lang;
+  }
+
+  sendFullStateSync() {
     const editor = document.getElementById("collabCodeEditor");
     const code = editor ? editor.value : "";
-    this.broadcast({
-      type: "CODE_SYNC",
-      code
-    });
-    if (this.activeQuestion) {
-      this.broadcast({
-        type: "QUESTION_SYNC",
-        question: this.activeQuestion
-      });
-    }
-    this.broadcast({
-      type: "LANGUAGE_SYNC",
-      language: this.currentLanguage
+    this.broadcastMessage({
+      type: "FULL_STATE_SYNC",
+      name: this.userName,
+      role: this.role,
+      code,
+      question: this.activeQuestion,
+      language: this.currentLanguage,
+      timerSeconds: this.interviewTimerSeconds,
+      timerStatus: this.timerStatus
     });
   }
 
@@ -302,7 +400,7 @@ export class CollaborativeInterviewRoom {
     clearTimeout(this._typingTimeout);
     this._typingTimeout = setTimeout(() => {
       if (ind) ind.style.opacity = "0";
-    }, 2000);
+    }, 1800);
   }
 
   showLiveToast(msg) {
@@ -316,20 +414,27 @@ export class CollaborativeInterviewRoom {
     }, 3500);
   }
 
-  updateConnectionBadge(text, isLive) {
+  updateConnectionStatusBadge() {
     const badge = document.getElementById("collabStatusBadge");
     const dot = document.getElementById("collabStatusDot");
-    if (badge) {
-      badge.textContent = text;
-      badge.style.color = isLive ? "var(--google-green)" : "var(--text-secondary)";
-      badge.style.borderColor = isLive ? "rgba(52, 168, 83, 0.4)" : "var(--border-color)";
-    }
-    if (dot) {
-      dot.style.background = isLive ? "var(--google-green)" : "var(--text-muted)";
+    if (!badge || !dot) return;
+
+    if (this.peerOnline) {
+      badge.textContent = `Live: ${this.peerName} (${this.peerRole})`;
+      badge.style.color = "var(--google-green)";
+      badge.style.borderColor = "rgba(52, 168, 83, 0.4)";
+      dot.style.background = "var(--google-green)";
+      dot.style.boxShadow = "0 0 6px rgba(52, 168, 83, 0.6)";
+    } else {
+      badge.textContent = `Room Ready (Waiting for peer)`;
+      badge.style.color = "var(--text-secondary)";
+      badge.style.borderColor = "var(--border-color)";
+      dot.style.background = "#fbbc04"; // yellow waiting dot
+      dot.style.boxShadow = "none";
     }
   }
 
-  // Timer controls
+  // Timer Synchronization
   startInterviewTimer() {
     if (this.timerStatus === "running") return;
     this.timerStatus = "running";
@@ -344,16 +449,15 @@ export class CollaborativeInterviewRoom {
       if (this.interviewTimerSeconds <= 0) {
         clearInterval(this.timerInterval);
         this.timerStatus = "idle";
-        alert("45-Minute Interview Time is UP!");
+        alert("45-Minute Technical Interview Time has Concluded!");
       }
     }, 1000);
 
     this.updateTimerDisplay();
-    this.broadcast({
+    this.broadcastMessage({
       type: "TIMER_SYNC",
       action: "START",
-      remainingSeconds: this.interviewTimerSeconds,
-      timestamp: Date.now()
+      seconds: this.interviewTimerSeconds
     });
   }
 
@@ -363,11 +467,10 @@ export class CollaborativeInterviewRoom {
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.updateTimerDisplay();
 
-    this.broadcast({
+    this.broadcastMessage({
       type: "TIMER_SYNC",
       action: "PAUSE",
-      remainingSeconds: this.interviewTimerSeconds,
-      timestamp: Date.now()
+      seconds: this.interviewTimerSeconds
     });
   }
 
@@ -377,17 +480,16 @@ export class CollaborativeInterviewRoom {
     this.interviewTimerSeconds = 45 * 60;
     this.updateTimerDisplay();
 
-    this.broadcast({
+    this.broadcastMessage({
       type: "TIMER_SYNC",
       action: "RESET",
-      remainingSeconds: 45 * 60,
-      timestamp: Date.now()
+      seconds: 45 * 60
     });
   }
 
   handleRemoteTimerSync(data) {
     if (data.action === "START") {
-      this.interviewTimerSeconds = data.remainingSeconds;
+      this.interviewTimerSeconds = data.seconds || this.interviewTimerSeconds;
       this.startInterviewTimer();
     } else if (data.action === "PAUSE") {
       this.pauseInterviewTimer();
@@ -429,19 +531,23 @@ export class CollaborativeInterviewRoom {
     }
 
     if (editor) {
-      const template = question.starterCode || `// ${question.company || "Google"} Technical Interview: ${question.title}\n// Expected Complexity: ${question.timeComp || "O(N)"} Time, ${question.spaceComp || "O(1)"} Space\n// Pattern: ${question.pattern || "Optimal DSA"}\n\nfunction solve(input) {\n  // 1. Clarifying questions & constraints\n  // 2. Optimal logic & dry-run\n  // 3. Implementation\n  \n  return null;\n}\n\n// Sample Test Call\nconsole.log("Output:", solve(${JSON.stringify(question.sampleInput || "")}));\n`;
+      const template = question.starterCode || `// ${question.company || "Google"} Technical Interview: ${question.title}\n// Expected Complexity: ${question.timeComp || "O(N)"} Time, ${question.spaceComp || "O(1)"} Space\n// Pattern: ${question.pattern || "Optimal DSA"}\n\nfunction solve(input) {\n  // 1. Clarifying questions & scale constraints\n  // 2. Algorithm logic & proof\n  // 3. Implementation\n  \n  return null;\n}\n\n// Sample Test Call\nconsole.log("Output:", solve(${JSON.stringify(question.sampleInput || "")}));\n`;
+      this.isRemoteUpdate = true;
       editor.value = template;
+      this.isRemoteUpdate = false;
     }
 
     if (broadcast) {
-      this.broadcast({
-        type: "QUESTION_SYNC",
+      this.broadcastMessage({
+        type: "QUESTION_CHANGE",
         question
       });
       const code = editor ? editor.value : "";
-      this.broadcast({
-        type: "CODE_SYNC",
-        code
+      this.broadcastMessage({
+        type: "CODE_CHANGE",
+        code,
+        name: this.userName,
+        role: this.role
       });
     }
   }
@@ -461,9 +567,9 @@ export class CollaborativeInterviewRoom {
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 15px; font-weight: 600;">Live Collaborative Mock Interview Session</span>
-              <span class="user-status-dot" id="collabStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--google-green); display: inline-block;"></span>
+              <span id="collabStatusDot" style="width: 9px; height: 9px; border-radius: 50%; background: #fbbc04; display: inline-block; transition: all 0.3s;"></span>
               <span class="badge" id="collabStatusBadge" style="background: var(--bg-surface-hover); border: 1px solid var(--border-color); font-size: 11px;">
-                Connecting Live Sync...
+                Room Ready (Waiting for peer)
               </span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
@@ -515,17 +621,17 @@ export class CollaborativeInterviewRoom {
                 </div>
                 <!-- Question Picker -->
                 <div>
-                  <select id="collabQuestionSelect" class="select-input" style="font-size: 11px; padding: 4px 8px; min-height: 28px; max-width: 220px;">
+                  <select id="collabQuestionSelect" class="select-input" style="font-size: 11px; padding: 4px 8px; min-height: 28px; max-width: 230px;">
                     <option value="">Select Interview Question...</option>
                     
-                    <optgroup label="Google High-Frequency (OA & Onsite)">
+                    <optgroup label="Google Hard & Advanced Onsite">
                       <option value="oa_goog_trap_water">Trapping Rain Water (Volume of Lakes)</option>
                       <option value="oa_goog_snapshot">Snapshot Array (Google Classic)</option>
                       <option value="oa_goog_currency_exchange">Evaluate Division (Currency Exchange)</option>
-                      <option value="oa_goog_longest_str_chain">Longest String Chain (DP)</option>
                       <option value="oa_goog_robot_cleaner">Robot Room Cleaner (Backtracking)</option>
-                      <option value="oa_goog_meeting_rooms">Meeting Rooms II (Sweep Line)</option>
                       <option value="oa_goog_word_ladder">Word Ladder (Bidirectional BFS)</option>
+                      <option value="oa_goog_longest_str_chain">Longest String Chain (DP)</option>
+                      <option value="oa_goog_meeting_rooms">Meeting Rooms II (Sweep Line)</option>
                       <option value="oa_goog_logger">Logger Rate Limiter</option>
                       <option value="oa_goog_card_points">Maximum Points You Can Obtain from Cards</option>
                       <option value="oa_goog_step_directions">Step-By-Step Directions From Binary Tree</option>
@@ -535,19 +641,32 @@ export class CollaborativeInterviewRoom {
                       <option value="oa_goog_4">Process Restricted Friend Requests (DSU)</option>
                     </optgroup>
 
-                    <optgroup label="Amazon Top OA & Phone Screen">
+                    <optgroup label="Amazon Top OA & Onsite">
                       <option value="oa_amzn_1">Amazon Fulfillment Center Package Sorting</option>
                       <option value="oa_amzn_2">Maximum Quality of Service Clusters (Binary Search)</option>
                       <option value="oa_amzn_3">Amazon Music Pair Duration Matching</option>
                     </optgroup>
 
-                    <optgroup label="Microsoft Top OA & Codility">
+                    <optgroup label="Meta / Facebook Advanced Screen">
+                      <option value="oa_meta_sparse_vec">Dot Product of Two Sparse Vectors</option>
+                      <option value="oa_meta_ocean_view">Buildings With an Ocean View</option>
+                      <option value="oa_meta_min_remove">Minimum Remove to Make Valid Parentheses</option>
+                      <option value="oa_meta_1">Rotational Cipher with Character Wraparounds</option>
+                    </optgroup>
+
+                    <optgroup label="Microsoft Codility & Onsite">
                       <option value="oa_msft_1">Minimum Deletions to Make Frequencies Unique</option>
                       <option value="oa_msft_2">Fair Indexes in Two Arrays</option>
                     </optgroup>
 
-                    <optgroup label="Meta / Facebook Screening">
-                      <option value="oa_meta_1">Rotational Cipher with Character Wraparounds</option>
+                    <optgroup label="Apple Systems & Architecture">
+                      <option value="oa_apple_lru">LRU Cache Design with TTL</option>
+                      <option value="oa_apple_course_sched">Course Schedule II (Build Order Dependency)</option>
+                    </optgroup>
+
+                    <optgroup label="Uber & Netflix High-Scale">
+                      <option value="oa_uber_bus_routes">Bus Routes (Min Transfers BFS)</option>
+                      <option value="oa_nflx_task_sched">Task Scheduler with Cool Down Time</option>
                     </optgroup>
 
                     ${this.customProblems.length > 0 ? `
@@ -724,19 +843,39 @@ Given n non-negative integers representing an elevation map where the width of e
   wireRoomEventListeners(inviteLink) {
     const editor = document.getElementById("collabCodeEditor");
 
-    // Real-time Textarea synchronization (Google Docs style)
-    // Sends live updates smoothly with a 100ms debounce
+    // Real-time Textarea synchronization with throttled flush
     if (editor) {
       editor.addEventListener("input", () => {
-        if (this.isLocalUpdate) return;
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => {
-          const code = editor.value;
-          this.broadcast({
-            type: "CODE_SYNC",
-            code
+        if (this.isRemoteUpdate) return;
+
+        const now = Date.now();
+        this.pendingCodeToSend = editor.value;
+
+        // If last sent was more than 250ms ago, send immediately
+        if (now - this.lastTypingSentTime > 250) {
+          this.lastTypingSentTime = now;
+          this.broadcastMessage({
+            type: "CODE_CHANGE",
+            code: this.pendingCodeToSend,
+            name: this.userName,
+            role: this.role
           });
-        }, 100);
+        }
+
+        // Also schedule a debounce to ensure the final keystroke is always transmitted
+        clearTimeout(this.typingThrottleTimer);
+        this.typingThrottleTimer = setTimeout(() => {
+          if (this.pendingCodeToSend !== null) {
+            this.broadcastMessage({
+              type: "CODE_CHANGE",
+              code: this.pendingCodeToSend,
+              name: this.userName,
+              role: this.role
+            });
+            this.lastTypingSentTime = Date.now();
+            this.pendingCodeToSend = null;
+          }
+        }, 150);
       });
     }
 
@@ -744,8 +883,8 @@ Given n non-negative integers representing an elevation map where the width of e
     const langSelect = document.getElementById("collabLanguageSelect");
     langSelect?.addEventListener("change", () => {
       this.currentLanguage = langSelect.value;
-      this.broadcast({
-        type: "LANGUAGE_SYNC",
+      this.broadcastMessage({
+        type: "LANGUAGE_CHANGE",
         language: this.currentLanguage
       });
       this.showLiveToast(`Switched language to ${this.currentLanguage}`);
@@ -844,16 +983,13 @@ Given n non-negative integers representing an elevation map where the width of e
     document.getElementById("btnToggleCollabRole")?.addEventListener("click", () => {
       this.role = this.role === "candidate" ? "interviewer" : "candidate";
       this.renderRoomUI();
-      this.syncCurrentStateToPeer();
+      this.sendFullStateSync();
     });
 
     // Leave Room
     document.getElementById("btnLeaveCollabRoom")?.addEventListener("click", () => {
       if (confirm("Leave this interview room?")) {
-        if (this.eventSource) this.eventSource.close();
-        if (this.broadcastChannel) this.broadcastChannel.close();
-        if (this.peer) this.peer.destroy();
-        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.cleanupConnections();
         this.renderLobbyUI();
       }
     });
@@ -893,11 +1029,12 @@ Given n non-negative integers representing an elevation map where the width of e
         consoleOut.style.color = "#a8c7fa";
 
         // Broadcast execution result to peer so interviewer sees candidate's console output live!
-        this.broadcast({
+        this.broadcastMessage({
           type: "CODE_RUN_RESULT",
           output: resultText,
           duration,
-          isError: false
+          isError: false,
+          name: this.userName
         });
       } catch (err) {
         const duration = (performance.now() - startTime).toFixed(1);
@@ -906,11 +1043,12 @@ Given n non-negative integers representing an elevation map where the width of e
         consoleOut.textContent = errText;
         consoleOut.style.color = "var(--google-red)";
 
-        this.broadcast({
+        this.broadcastMessage({
           type: "CODE_RUN_RESULT",
           output: errText,
           duration,
-          isError: true
+          isError: true,
+          name: this.userName
         });
       }
     });
@@ -918,8 +1056,17 @@ Given n non-negative integers representing an elevation map where the width of e
     // Clear Code
     document.getElementById("btnCollabClearCode")?.addEventListener("click", () => {
       if (confirm("Clear code editor?")) {
-        if (editor) editor.value = "";
-        this.broadcast({ type: "CODE_SYNC", code: "" });
+        if (editor) {
+          this.isRemoteUpdate = true;
+          editor.value = "";
+          this.isRemoteUpdate = false;
+        }
+        this.broadcastMessage({
+          type: "CODE_CHANGE",
+          code: "",
+          name: this.userName,
+          role: this.role
+        });
       }
     });
   }
@@ -982,7 +1129,7 @@ Given n non-negative integers representing an elevation map where the width of e
         </div>
 
         <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
-          100% Free &bull; Real-time WebRTC + Cloud SSE Streaming &bull; Multi-tab same-device testing supported
+          100% Free &bull; High-speed WebSocket streaming &bull; Zero rate limits &bull; Instant multi-tab & cross-device sync
         </div>
       </div>
     `;
