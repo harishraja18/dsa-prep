@@ -1,4 +1,4 @@
-# Engineering Preparation Workspace: Google DSA & AI
+# Engineering Preparation Workspace: DSA & AI
 
 A professional interview preparation platform designed for Google and FAANG algorithmic problem solving, artificial intelligence curriculum, study hours tracking, and access-controlled deployment.
 
@@ -19,5 +19,5 @@ A professional interview preparation platform designed for Google and FAANG algo
 ## Authentication & Access Control
 
 Access to this workspace is protected:
-- **Default Master Passkey:** `google2026` (changeable in the Administration & Security tab).
+- **Default Master Passkey:** `g*****` (changeable in the Administration & Security tab).
 - **Guest Access:** The administrator can issue single-use or revocable guest access tokens (`ACC-XXXXXX`) to grant access to peers or reviewers. Unauthorized visitors must request access through the portal.
